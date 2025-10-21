@@ -115,10 +115,6 @@ async function createFileinDateFolder(name,content) {
 
 
 
-async function getFolderId(folderId) {
-    
-}
-
 module.exports={
     createFileinDateFolder
 }
