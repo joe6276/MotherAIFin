@@ -49,18 +49,10 @@ async function copyWritingAgent(req,res) {
 
     try {
          const response = await copyWriting(instruction)
-        return res.status(200).json({selectedAgent:response})
+        return res.status(200).json({response:response})
     } catch (error) {
         return res.status(500).json({error})
     }
 }
 
 module.exports={copyWritingAgent}
-// async function run() {
-//     const response= await copyWritingAgent("Marketting script for ColtiumAI Company")
-//     console.log(response);
-    
-// }
-
-
-// run()
