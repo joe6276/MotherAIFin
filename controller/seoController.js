@@ -2,8 +2,7 @@ const axios = require("axios")
 const cheerio = require("cheerio")
 const dotenv = require('dotenv')
 const path = require("path")
-const OpenAI = require("openai")
-
+const {SEO_SYSTEM_PROMPT,SEO_WEBSITE_PROMPT}= require("../data/seoResult")
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
@@ -389,33 +388,6 @@ async function seoAgentFunc(seoResults, $) {
     }
 }
 
-// async function main() {
-//     const agent = new SEOAgent();
-
-//     try {
-//         const result = await agent.analyzeSEO('https://intl-colt.online');
-//         const aiResponse = await seoAgentFunc(result, result.$)
-//         result.aiResponse = aiResponse
-
-//         return result;
-
-
-//         // console.log(result);
-//         // console.log('\n=== SEO Analysis Results ===\n');
-//         // console.log(`URL: ${result.url}`);
-//         // console.log(`Overall Score: ${result.overallScore}/100 (Grade: ${result.grade})`);
-//         // console.log('\n--- Detailed Scores ---');
-//         // console.log(JSON.stringify(result.scores, null, 2));
-//         // console.log('\n--- Issues Found ---');
-//         // result.issues.forEach((issue, i) => console.log(`${i + 1}. ${issue}`));
-//         // console.log('\n--- Recommendations ---');
-//         // result.recommendations.forEach((rec, i) => console.log(`${i + 1}. ${rec}`));
-
-//     } catch (error) {
-//         console.error('Error:', error.message);
-//     }
-// }
-
 
 async function seoAgent(req, res) {
     try {
@@ -436,4 +408,106 @@ async function seoAgent(req, res) {
     }
  }
 
-module.exports={seoAgent}
+
+ async function seoArticlesFunc(instruction){
+           const apiKey = process.env.OPENAI_API_KEY;
+
+           const response = await fetch("https://api.openai.com/v1/chat/completions",{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                 model:"gpt-4o-mini",
+                messages:[
+                    {
+                        role:"system",
+                        content:SEO_SYSTEM_PROMPT
+                    },{
+                        role:"user",
+                        content: instruction
+                    }
+                ],
+                temperature:0.7 
+            })
+
+        })
+
+         const data = await response.json();
+
+            if (!response.ok) {
+            console.error("OpenAI API Error:", data);
+            return;
+            }
+
+            const answer= data.choices[0].message.content
+            return answer;
+    
+ }
+
+
+  async function seoWebsiteFunc(instruction){
+           const apiKey = process.env.OPENAI_API_KEY;
+
+           const response = await fetch("https://api.openai.com/v1/chat/completions",{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                 model:"gpt-4o-mini",
+                messages:[
+                    {
+                        role:"system",
+                        content:SEO_WEBSITE_PROMPT
+                    },{
+                        role:"user",
+                        content: instruction
+                    }
+                ],
+                temperature:0.7 
+            })
+
+        })
+
+         const data = await response.json();
+
+            if (!response.ok) {
+            console.error("OpenAI API Error:", data);
+            return;
+            }
+
+            const answer= data.choices[0].message.content
+            return answer;
+    
+ }
+
+ async function seoArticles(req,res){
+    try {
+        const {instruction}= req.body
+        const result = await seoArticlesFunc(instruction)
+        return res.status(200).json(result)
+    } catch (error) {
+        console.log(error);
+        
+       return res.status(500).json({error})
+    }
+ }
+
+
+  async function seoWebsites(req,res){
+    try {
+        const {instruction}= req.body
+        const result = await seoWebsiteFunc(instruction)
+        return res.status(200).json(result)
+        
+    } catch (error) {
+        console.log(error);
+        
+       return res.status(500).json({error})
+    }
+ }
+
+module.exports={seoAgent, seoArticles, seoWebsites}
