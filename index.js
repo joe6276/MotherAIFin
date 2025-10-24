@@ -1,5 +1,7 @@
 const {json}= require("express")
 const express = require("express")
+const cors= require("cors")
+
 const {router}= require ("./routes/index")
 const { websiteRouter } = require("./routes/websiteRoutes")
 const dotenv=require("dotenv")
@@ -10,9 +12,8 @@ dotenv.config()
 
 
 const app= express()
-
-
 app.use(json())
+app.use(cors())
 app.use("/users", router)
 app.use("/website", websiteRouter)
 app.use("/orchestration", orchestrationRouter)
