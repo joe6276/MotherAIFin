@@ -3,56 +3,104 @@ const path = require("path")
 dotenv.config({path:path.resolve(__dirname, "../.env")})
 
 async function copyWriting(question) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    const prompt=`You are an expert AI Copy writer, who writes script adapting to the user requirements.`
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const claudeKey = process.env.ANTHROPIC_API_KEY;
+    const prompt = `You are an expert AI Copy writer, who writes script adapting to the user requirements.`;
+    
     try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions",{
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                 model:"gpt-4o-mini",
-                messages:[
-                    {
-                        role:"system",
-                        content:prompt
-                    },{
-                        role:"user",
-                        content: question
-                    }
-                ],
-                temperature:0.7 
-            })
+        // Try OpenAI first with 30 second timeout
+        const gptResponse = await Promise.race([
+            fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${openaiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: prompt
+                        },
+                        {
+                            role: "user",
+                            content: question
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            }),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
+            )
+        ]);
 
-        })
+        const data = await gptResponse.json();
 
-            const data = await response.json();
-
-            if (!response.ok) {
+        if (gptResponse.ok) {
+            const answer = data.choices[0].message.content;
+            return answer;
+        } else {
             console.error("OpenAI API Error:", data);
-            return;
+            throw new Error("OpenAI API failed");
+        }
+
+    } catch (error) {
+        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+        
+        // Fallback to Claude API
+        try {
+            console.log("calling Claude..");
+            
+
+            const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": claudeKey,
+                    "anthropic-version": "2023-06-01"
+                },
+                body: JSON.stringify({
+                    model: "claude-sonnet-4-20250514",
+                    max_tokens: 4096,
+                    system: prompt,
+                    messages: [
+                        {
+                            role: "user",
+                            content: question
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            });
+
+            const claudeData = await claudeResponse.json();
+
+            if (!claudeResponse.ok) {
+                console.error("Claude API Error:", claudeData);
+                throw new Error("Claude API failed");
             }
 
-            const answer= data.choices[0].message.content
+            const answer = claudeData.content[0].text;
             return answer;
-    } catch (error) {
-        console.log(error);
-        throw error
-        
+
+        } catch (claudeError) {
+            console.error("Claude API Error:", claudeError);
+            throw claudeError;
+        }
     }
 }
 
-async function copyWritingAgent(req,res) {
-    const{instruction}= req.body
+async function copyWritingAgent(req, res) {
+    const { instruction } = req.body;
 
     try {
-         const response = await copyWriting(instruction)
-        return res.status(200).json({response:response})
+        const response = await copyWriting(instruction);
+        return res.status(200).json({ response: response });
     } catch (error) {
-        return res.status(500).json({error})
+        return res.status(500).json({ error: error.message });
     }
 }
 
-module.exports={copyWritingAgent}
+module.exports = { copyWritingAgent };

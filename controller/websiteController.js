@@ -77,7 +77,8 @@ const { createFileinDateFolder } = require('../google');
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 async function generateComponentCode(componentType, instruction) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const claudeKey = process.env.ANTHROPIC_API_KEY;
 
   const prompt = `Generate HTML and CSS code for a ${componentType} component based on this instruction: ${instruction}.
   Return the response in this exact JSON format:
@@ -87,61 +88,111 @@ async function generateComponentCode(componentType, instruction) {
   }
   Make the code clean, modern, and production-ready.`;
 
+  const systemPrompt = "You are an experienced programmer that generates clean HTML and CSS code. Always return responses in valid JSON format.";
+
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini", 
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an experienced programmer that generates clean HTML and CSS code. Always return responses in valid JSON format.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
+    // Try OpenAI first with 30 second timeout
+    const gptResponse = await Promise.race([
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+          temperature: 0.7,
+        }),
       }),
-    });
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
+      )
+    ]);
 
-    const data = await response.json();
+    const data = await gptResponse.json();
 
-    if (!response.ok) {
+    if (gptResponse.ok) {
+      const messageContent = data.choices[0].message.content;
+      const generatedCode = JSON.parse(messageContent);
+
+      return {
+        html: generatedCode.html.toString(),
+        css: generatedCode.css.toString()
+      };
+    } else {
       console.error("OpenAI API Error:", data);
-      return;
+      throw new Error("OpenAI API failed");
     }
 
-    const messageContent = data.choices[0].message.content;
-    const generatedCode = JSON.parse(messageContent);
-
-    return {
-        html:generatedCode.html.toString(),
-        css:generatedCode.css.toString()
-    };
   } catch (error) {
-    console.error("Error generating code:", error);
-    return res.status(500).status(error)
+    console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+    
+    // Fallback to Claude API
+    try {
+      const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": claudeKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          temperature: 0.7
+        })
+      });
+
+      const claudeData = await claudeResponse.json();
+
+      if (!claudeResponse.ok) {
+        console.error("Claude API Error:", claudeData);
+        throw new Error("Claude API failed");
+      }
+
+      const messageContent = claudeData.content[0].text;
+      const generatedCode = JSON.parse(messageContent);
+
+      return {
+        html: generatedCode.html.toString(),
+        css: generatedCode.css.toString()
+      };
+
+    } catch (claudeError) {
+      console.error("Claude API Error:", claudeError);
+      throw claudeError;
+    }
   }
 }
 
+async function websiteAgent(req, res) {
+  try {
+    const { component, instruction } = req.body;
+    const response = await generateComponentCode(component, instruction);
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error("Error generating code:", error);
+    return res.status(500).json({ error: error.message });
+  }
+}
 
-async function websiteAgent(req,res) {
-try {
-    const {component,instruction}= req.body
-    const response= await generateComponentCode(component,instruction)
-    return res.status(200).json(response)
-} catch (error) {
-     console.error("Error generating code:", error);
-     return res.status(500).status(error)
-}
-}
 
 async function saveContent(req,res) {
     try {

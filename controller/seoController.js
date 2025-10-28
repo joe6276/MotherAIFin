@@ -309,16 +309,14 @@ class SEOAgent {
     }
 
 }
-
-
 async function seoAgentFunc(seoResults, $) {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const claudeKey = process.env.ANTHROPIC_API_KEY;
 
     const title = $('title').text().trim();
     const h1 = $('h1').first().text().trim();
     const metaDescription = $('meta[name="description"]').attr('content') || '';
     const bodyText = $('body').text().trim().substring(0, 1000); // First 1000 chars
-
 
     const prompt = `You are an expert SEO consultant. Analyze this website's SEO performance and provide actionable insights.
             URL: ${seoResults.url}
@@ -348,166 +346,298 @@ async function seoAgentFunc(seoResults, $) {
 
             Format your response in clear sections with actionable advice.`;
 
+    const systemPrompt = 'You are an expert SEO consultant who provides clear, actionable advice. Focus on practical improvements that will have the biggest impact on search rankings.';
 
     try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages: [
-                    {
-                        role: "system",
-                        content: 'You are an expert SEO consultant who provides clear, actionable advice. Focus on practical improvements that will have the biggest impact on search rankings.'
-                    }, {
-                        role: "user",
-                        content: prompt
-                    }
-                ],
-                temperature: 0.7
-            })
+        // Try OpenAI first with 30 second timeout
+        const gptResponse = await Promise.race([
+            fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${openaiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: systemPrompt
+                        },
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            }),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
+            )
+        ]);
 
-        })
+        const data = await gptResponse.json();
 
-        const data = await response.json();
-
-        if (!response.ok) {
+        if (gptResponse.ok) {
+            const answer = data.choices[0].message.content;
+            return answer;
+        } else {
             console.error("OpenAI API Error:", data);
-            return;
+            throw new Error("OpenAI API failed");
         }
 
-        const answer = data.choices[0].message.content
-        return answer;
     } catch (error) {
-        console.log(error);
-        throw error
+        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+        
+        // Fallback to Claude API
+        try {
+            const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": claudeKey,
+                    "anthropic-version": "2023-06-01"
+                },
+                body: JSON.stringify({
+                    model: "claude-sonnet-4-20250514",
+                    max_tokens: 4096,
+                    system: systemPrompt,
+                    messages: [
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            });
 
+            const claudeData = await claudeResponse.json();
+
+            if (!claudeResponse.ok) {
+                console.error("Claude API Error:", claudeData);
+                throw new Error("Claude API failed");
+            }
+
+            const answer = claudeData.content[0].text;
+            return answer;
+
+        } catch (claudeError) {
+            console.error("Claude API Error:", claudeError);
+            throw claudeError;
+        }
     }
 }
-
 
 async function seoAgent(req, res) {
     try {
         const agent = new SEOAgent();
-        const { url } = req.body
+        const { url } = req.body;
         const result = await agent.analyzeSEO(url);
-        const aiResponse = await seoAgentFunc(result, result.$)
-        result.aiResponse = aiResponse
+        const aiResponse = await seoAgentFunc(result, result.$);
+        result.aiResponse = aiResponse;
 
-        return res.status(200).json(result)
+        return res.status(200).json(result);
 
-    }catch(error){
-
-        console.log(error);
-        
-        return res.status(500).json({error})
-
-    }
- }
-
-
- async function seoArticlesFunc(instruction){
-           const apiKey = process.env.OPENAI_API_KEY;
-
-           const response = await fetch("https://api.openai.com/v1/chat/completions",{
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                 model:"gpt-4o-mini",
-                messages:[
-                    {
-                        role:"system",
-                        content:SEO_SYSTEM_PROMPT
-                    },{
-                        role:"user",
-                        content: instruction
-                    }
-                ],
-                temperature:0.7 
-            })
-
-        })
-
-         const data = await response.json();
-
-            if (!response.ok) {
-            console.error("OpenAI API Error:", data);
-            return;
-            }
-
-            const answer= data.choices[0].message.content
-            return answer;
-    
- }
-
-
-  async function seoWebsiteFunc(instruction){
-           const apiKey = process.env.OPENAI_API_KEY;
-
-           const response = await fetch("https://api.openai.com/v1/chat/completions",{
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                 model:"gpt-4o-mini",
-                messages:[
-                    {
-                        role:"system",
-                        content:SEO_WEBSITE_PROMPT
-                    },{
-                        role:"user",
-                        content: instruction
-                    }
-                ],
-                temperature:0.7 
-            })
-
-        })
-
-         const data = await response.json();
-
-            if (!response.ok) {
-            console.error("OpenAI API Error:", data);
-            return;
-            }
-
-            const answer= data.choices[0].message.content
-            return answer;
-    
- }
-
- async function seoArticles(req,res){
-    try {
-        const {instruction}= req.body
-        const result = await seoArticlesFunc(instruction)
-        return res.status(200).json(result)
     } catch (error) {
         console.log(error);
-        
-       return res.status(500).json({error})
+        return res.status(500).json({ error: error.message });
     }
- }
+}
 
+async function seoArticlesFunc(instruction) {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const claudeKey = process.env.ANTHROPIC_API_KEY;
 
-  async function seoWebsites(req,res){
     try {
-        const {instruction}= req.body
-        const result = await seoWebsiteFunc(instruction)
-        return res.status(200).json(result)
+        // Try OpenAI first with 30 second timeout
+        const gptResponse = await Promise.race([
+            fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${openaiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: SEO_SYSTEM_PROMPT
+                        },
+                        {
+                            role: "user",
+                            content: instruction
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            }),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
+            )
+        ]);
+
+        const data = await gptResponse.json();
+
+        if (gptResponse.ok) {
+            const answer = data.choices[0].message.content;
+            return answer;
+        } else {
+            console.error("OpenAI API Error:", data);
+            throw new Error("OpenAI API failed");
+        }
+
+    } catch (error) {
+        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
         
+        // Fallback to Claude API
+        try {
+            const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": claudeKey,
+                    "anthropic-version": "2023-06-01"
+                },
+                body: JSON.stringify({
+                    model: "claude-sonnet-4-20250514",
+                    max_tokens: 4096,
+                    system: SEO_SYSTEM_PROMPT,
+                    messages: [
+                        {
+                            role: "user",
+                            content: instruction
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            });
+
+            const claudeData = await claudeResponse.json();
+
+            if (!claudeResponse.ok) {
+                console.error("Claude API Error:", claudeData);
+                throw new Error("Claude API failed");
+            }
+
+            const answer = claudeData.content[0].text;
+            return answer;
+
+        } catch (claudeError) {
+            console.error("Claude API Error:", claudeError);
+            throw claudeError;
+        }
+    }
+}
+
+async function seoWebsiteFunc(instruction) {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const claudeKey = process.env.ANTHROPIC_API_KEY;
+
+    try {
+        // Try OpenAI first with 30 second timeout
+        const gptResponse = await Promise.race([
+            fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${openaiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: SEO_WEBSITE_PROMPT
+                        },
+                        {
+                            role: "user",
+                            content: instruction
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            }),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
+            )
+        ]);
+
+        const data = await gptResponse.json();
+
+        if (gptResponse.ok) {
+            const answer = data.choices[0].message.content;
+            return answer;
+        } else {
+            console.error("OpenAI API Error:", data);
+            throw new Error("OpenAI API failed");
+        }
+
+    } catch (error) {
+        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+        
+        // Fallback to Claude API
+        try {
+            const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": claudeKey,
+                    "anthropic-version": "2023-06-01"
+                },
+                body: JSON.stringify({
+                    model: "claude-sonnet-4-20250514",
+                    max_tokens: 4096,
+                    system: SEO_WEBSITE_PROMPT,
+                    messages: [
+                        {
+                            role: "user",
+                            content: instruction
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            });
+
+            const claudeData = await claudeResponse.json();
+
+            if (!claudeResponse.ok) {
+                console.error("Claude API Error:", claudeData);
+                throw new Error("Claude API failed");
+            }
+
+            const answer = claudeData.content[0].text;
+            return answer;
+
+        } catch (claudeError) {
+            console.error("Claude API Error:", claudeError);
+            throw claudeError;
+        }
+    }
+}
+
+async function seoArticles(req, res) {
+    try {
+        const { instruction } = req.body;
+        const result = await seoArticlesFunc(instruction);
+        return res.status(200).json(result);
     } catch (error) {
         console.log(error);
-        
-       return res.status(500).json({error})
+        return res.status(500).json({ error: error.message });
     }
- }
+}
 
-module.exports={seoAgent, seoArticles, seoWebsites}
+async function seoWebsites(req, res) {
+    try {
+        const { instruction } = req.body;
+        const result = await seoWebsiteFunc(instruction);
+        return res.status(200).json(result);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+module.exports = { seoAgent, seoArticles, seoWebsites };
