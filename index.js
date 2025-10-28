@@ -8,6 +8,8 @@ const dotenv=require("dotenv")
 const { orchestrationRouter } = require("./routes/orchestartionRoutes")
 const { copyWritingRouter } = require("./routes/copywritingRoutes")
 const { seoRouter } = require("./routes/seoRouter")
+const { videoRouter } = require("./routes/videoRoutes")
+const { transcribeRouter } = require("./routes/transcribeRoutes")
 dotenv.config()
 
 
@@ -19,7 +21,8 @@ app.use("/website", websiteRouter)
 app.use("/orchestration", orchestrationRouter)
 app.use("/copywriting", copyWritingRouter)
 app.use("/seo", seoRouter)
-
+app.use("/video", videoRouter)
+app.use("/transcribe", transcribeRouter)
 app.get("/test", (req,res)=>{
     res.status(200).send("<h1> Hello There Changes!!!! </h1>")
 })
