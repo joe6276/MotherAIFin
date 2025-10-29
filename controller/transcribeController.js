@@ -91,7 +91,7 @@ async function transcribeFromUrl(audioUrl) {
     return transcription
   } catch (error) {
     console.error("❌ Whisper API Error:", error.response?.data || error.message);
-    return error
+    throw error
   }
 }
 
