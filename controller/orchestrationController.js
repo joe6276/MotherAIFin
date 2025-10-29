@@ -14,7 +14,7 @@ async function chooseAgent(instruction) {
         "seo": "This agent focuses on optimizing websites for search engines to improve visibility and ranking.",
         "copyWriting": "This agent crafts engaging and persuasive written content, including scripts, articles, and marketing copy.",
         "video": "This agent produces high-quality video content for promotions, tutorials, and storytelling.",
-        "motherAI": "This is an advanced multi-functional agent capable of coordinating and combining the Website, SEO, Copywriting, and Video agents to deliver complete, integrated digital solutions."
+        "motherAI": "This is a general agent that can answer any question that the above agents cant answer"
         }
     Based on the instruction: "${instruction}", respond with the name of the most appropriate agent only. You must give an agent name, I don't know is not a valid answer.
     `;
