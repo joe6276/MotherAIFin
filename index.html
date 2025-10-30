@@ -40,14 +40,14 @@
     <strong>Plain HTML form (fallback)</strong>
     <p class="hint">If CORS is allowed on your server, this form will POST directly to the endpoint and open response in a new tab. If CORS prevents direct browser POSTs, either enable CORS on the backend or use the fetch button above while serving this file from a local server.</p>
 
-    <form id="plainForm" method="POST" enctype="multipart/form-data" action="https://da4a09fbb028.ngrok-free.app/convo" target="_blank">
+    <form id="plainForm" method="POST" enctype="multipart/form-data" action="https://motherai-degdaeasczdmdbh0.eastus-01.azurewebsites.net/convo" target="_blank">
       <input type="file" name="audio" accept="audio/*" required />
       <button type="submit" style="margin-left:8px;">Submit Form</button>
     </form>
   </div>
 
   <script>
-    const endpoint = "https://da4a09fbb028.ngrok-free.app/convo";
+    const endpoint = "https://motherai-degdaeasczdmdbh0.eastus-01.azurewebsites.net/convo";
     const fileInput = document.getElementById("fileInput");
     const sendBtn = document.getElementById("sendBtn");
     const openFormBtn = document.getElementById("openFormBtn");

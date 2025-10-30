@@ -1,41 +1,53 @@
 const  OpenAI = require("openai")
 const dotenv = require("dotenv")
 const path = require("path");
-const { uploadImageFile } = require("../uploads");
 dotenv.config({path:path.resolve(__dirname, "../.env")})
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const {BlobServiceClient}= require("@azure/storage-blob")
 
+async function generateAndUploadImage(prompt) {
+  // Replace spaces & special chars safely
+  const safePrompt = encodeURIComponent(prompt);
+  const url = `https://pollinations.ai/p/${safePrompt}`;
 
-
-async function describeImage(imageUrl) {
-  try {
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini", // supports vision
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Describe this image in detail." },
-            { type: "image_url", image_url: { url: imageUrl } }
-          ]
-        }
-      ]
-    });
-
-    return response.choices[0].message.content;
-  } catch (error) {
-    console.error("Error describing image:", error);
-    throw error;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Image generation failed: ${response.statusText}`);
   }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const fileName = `pollinations_${Date.now()}.png`;
+  const imageUrl = await uploadToAzure(buffer, fileName);
+
+  console.log("✅ Uploaded image to:", imageUrl);
+  return imageUrl;
+}
+
+async function uploadToAzure(buffer, fileName) {
+    
+const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+  const containerClient = blobServiceClient.getContainerClient("spareparts");
+ 
+  const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+  await blockBlobClient.uploadData(buffer, {
+    blobHTTPHeaders: { blobContentType: "image/png" },
+  });
+
+  return blockBlobClient.url;
 }
 
 
+// generateAndUploadImage("a futuristic African city skyline at sunset, cyberpunk style")
+//   .then(url => console.log("🌆 Image URL:", url))
+//   .catch(err => console.error("❌ Error:", err));
+
 async function uploadAnImage(req,res){
     try {
-        const imageUrl = await uploadImageFile(req.file);
-        const text = await describeImage(imageUrl)
-        return res.status(200).json({imageUrl, text})
+       const {instruction}= req.body
+        const image = await generateAndUploadImage(instruction)
+        return res.status(200).json({url:image})
     } catch (error) {
         console.log(error);
         
