@@ -29,4 +29,6 @@ async function uploadImageFile(file) {
   }
 }
 
+
+
 module.exports = {uploadImageFile};

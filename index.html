@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Upload & Describe Image</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width:720px; margin:40px auto; padding:0 16px; }
+    .card { border:1px solid #ddd; padding:16px; border-radius:8px; box-shadow: 0 2px 6px rgba(0,0,0,.04); }
+    img.preview { max-width:100%; height:auto; display:block; margin-top:12px; border-radius:6px; }
+    pre { white-space:pre-wrap; word-break:break-word; background:#f9f9f9; padding:12px; border-radius:6px; }
+    button{ padding:8px 12px; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <h1>Upload & Describe Image</h1>
+
+  <div class="card">
+    <form id="form">
+      <label>
+        Choose image
+        <input type="file" name="image" id="imageInput" accept="image/*" required>
+      </label>
+      <div style="margin-top:12px;">
+        <button type="submit">Upload & Describe</button>
+      </div>
+    </form>
+
+    <div id="status" style="margin-top:12px"></div>
+
+    <div id="result" style="margin-top:16px; display:none;">
+      <h3>Uploaded image</h3>
+      <a id="imageUrl" href="#" target="_blank" rel="noopener"></a>
+      <img id="preview" class="preview" alt="preview" />
+      <h3>Description</h3>
+      <pre id="description"></pre>
+    </div>
+  </div>
+
+  <script>
+    const endpoint = "https://e8f984f9bd9d.ngrok-free.app/image";
+    const form = document.getElementById("form");
+    const imageInput = document.getElementById("imageInput");
+    const status = document.getElementById("status");
+    const result = document.getElementById("result");
+    const imageUrlEl = document.getElementById("imageUrl");
+    const preview = document.getElementById("preview");
+    const descriptionEl = document.getElementById("description");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!imageInput.files || !imageInput.files[0]) return;
+      const file = imageInput.files[0];
+
+      status.textContent = "Uploading...";
+      result.style.display = "none";
+
+      try {
+        const fd = new FormData();
+        fd.append("image", file);
+
+        const resp = await fetch(endpoint, {
+          method: "POST",
+          body: fd
+          // don't set Content-Type — the browser sets the right multipart boundary
+        });
+
+        if (!resp.ok) {
+          const txt = await resp.text();
+          throw new Error(`Server error ${resp.status}: ${txt}`);
+        }
+
+        const data = await resp.json();
+        // expected: { imageUrl: "...", description: "..." } — adapt if your server returns differently
+        const { imageUrl, description } = data;
+
+        imageUrlEl.textContent = imageUrl || "No URL returned";
+        imageUrlEl.href = imageUrl || "#";
+        preview.src = imageUrl || URL.createObjectURL(file); // fallback to local preview
+        descriptionEl.textContent = description || JSON.stringify(data, null, 2);
+
+        result.style.display = "block";
+        status.textContent = "Done.";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Error: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
