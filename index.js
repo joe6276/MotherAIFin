@@ -12,6 +12,7 @@ const { videoRouter } = require("./routes/videoRoutes")
 const { transcribeRouter } = require("./routes/transcribeRoutes")
 const { motherAiRouter } = require("./routes/motherAIRoutes")
 const { imageRouter } = require("./routes/imageRoutes")
+const { convoRouter } = require("./routes/conversationRoutes")
 dotenv.config()
 
 
@@ -27,6 +28,8 @@ app.use("/video", videoRouter)
 app.use("/transcribe", transcribeRouter)
 app.use("/motherAI", motherAiRouter)
 app.use("/image", imageRouter)
+app.use("/convo", convoRouter)
+
 
 app.get("/test", (req,res)=>{
     res.status(200).send("<h1> Hello There Changes!!!! </h1>")

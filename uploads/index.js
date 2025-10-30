@@ -24,6 +24,7 @@ async function uploadImageFile(file) {
 
     return blockBlobClient.url;
   } catch (error) {
+    console.error(error)
     console.error("Error uploading image:", error.message);
     throw error;
   }
