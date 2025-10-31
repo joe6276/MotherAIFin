@@ -2,7 +2,7 @@ const axios = require("axios")
 const cheerio = require("cheerio")
 const dotenv = require('dotenv')
 const path = require("path")
-const {SEO_SYSTEM_PROMPT,SEO_WEBSITE_PROMPT}= require("../data/seoResult")
+const {SEO_SYSTEM_PROMPT,SEO_WEBSITE_PROMPT, seoUpdatePromptMaker}= require("../data/seoResult")
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
@@ -535,7 +535,7 @@ async function seoArticlesFunc(instruction) {
 async function seoWebsiteFunc(instruction) {
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
-
+    
     try {
         // Try OpenAI first with 30 second timeout
         const gptResponse = await Promise.race([
@@ -551,6 +551,92 @@ async function seoWebsiteFunc(instruction) {
                         {
                             role: "system",
                             content: SEO_WEBSITE_PROMPT
+                        },
+                        {
+                            role: "user",
+                            content: instruction
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            }),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
+            )
+        ]);
+
+        const data = await gptResponse.json();
+
+        if (gptResponse.ok) {
+            const answer = data.choices[0].message.content;
+            return answer;
+        } else {
+            console.error("OpenAI API Error:", data);
+            throw new Error("OpenAI API failed");
+        }
+
+    } catch (error) {
+        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+        
+        // Fallback to Claude API
+        try {
+            const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": claudeKey,
+                    "anthropic-version": "2023-06-01"
+                },
+                body: JSON.stringify({
+                    model: "claude-sonnet-4-20250514",
+                    max_tokens: 4096,
+                    system: SEO_WEBSITE_PROMPT,
+                    messages: [
+                        {
+                            role: "user",
+                            content: instruction
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            });
+
+            const claudeData = await claudeResponse.json();
+
+            if (!claudeResponse.ok) {
+                console.error("Claude API Error:", claudeData);
+                throw new Error("Claude API failed");
+            }
+
+            const answer = claudeData.content[0].text;
+            return answer;
+
+        } catch (claudeError) {
+            console.error("Claude API Error:", claudeError);
+            throw claudeError;
+        }
+    }
+}
+
+async function seoUpdateWebsiteFunc(instruction, existingCode) {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const claudeKey = process.env.ANTHROPIC_API_KEY;
+    const SEO_UPDATE_WEBSITE_PROMPT = seoUpdatePromptMaker(existingCode)
+    try {
+        // Try OpenAI first with 30 second timeout
+        const gptResponse = await Promise.race([
+            fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${openaiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: SEO_UPDATE_WEBSITE_PROMPT
                         },
                         {
                             role: "user",
@@ -640,4 +726,16 @@ async function seoWebsites(req, res) {
     }
 }
 
-module.exports = { seoAgent, seoArticles, seoWebsites };
+
+async function updateSeoWebsites(req, res) {
+    try {
+        const { instruction, existingCode } = req.body;
+        const result = await seoUpdateWebsiteFunc(instruction,existingCode);
+        return res.status(200).json(result);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+module.exports = { seoAgent, seoArticles, seoWebsites,updateSeoWebsites };
