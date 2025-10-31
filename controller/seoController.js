@@ -618,10 +618,10 @@ async function seoWebsiteFunc(instruction) {
     }
 }
 
-async function seoUpdateWebsiteFunc(instruction, existingCode) {
+async function seoUpdateWebsiteFunc(instruction, existingCode, url) {
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
-    const SEO_UPDATE_WEBSITE_PROMPT = seoUpdatePromptMaker(existingCode)
+    const SEO_UPDATE_WEBSITE_PROMPT = seoUpdatePromptMaker(existingCode,url)
     try {
         // Try OpenAI first with 30 second timeout
         const gptResponse = await Promise.race([
@@ -729,8 +729,8 @@ async function seoWebsites(req, res) {
 
 async function updateSeoWebsites(req, res) {
     try {
-        const { instruction, existingCode } = req.body;
-        const result = await seoUpdateWebsiteFunc(instruction,existingCode);
+        const { instruction, existingCode, url } = req.body;
+        const result = await seoUpdateWebsiteFunc(instruction,existingCode,url);
         return res.status(200).json(result);
     } catch (error) {
         console.log(error);
