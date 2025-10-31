@@ -73,6 +73,7 @@
 const dotenv = require('dotenv');
 const path = require('path');
 const { createFileinDateFolder } = require('../google');
+const { url } = require('inspector');
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
@@ -193,7 +194,7 @@ async function websiteAgent(req, res) {
   }
 }
 
-async function updateComponent(componentType, instruction, existingCode = null) {
+async function updateComponent(componentType, instruction, existingCode = null, url) {
   const openaiKey = process.env.OPENAI_API_KEY;
   const claudeKey = process.env.ANTHROPIC_API_KEY;
 
@@ -217,6 +218,8 @@ Apply the requested changes to the existing code. Return the COMPLETE updated co
   "html": "the complete updated HTML code here",
   "css": "the complete updated CSS code here"
 }
+
+Incase ${url} is provided add the image to the component, use a nice styling to achieve this.
 
 Make sure all changes are applied correctly and the code remains clean and production-ready.`;
   } else {
@@ -346,8 +349,8 @@ Make the code clean, modern, and production-ready.`;
 async function updateComponentCode(req,res){
   try {
     
-    const {component, instruction, existingCode}= req.body
-    const response = await updateComponent(component,instruction,existingCode)
+    const {component, instruction, existingCode, url}= req.body
+    const response = await updateComponent(component,instruction,existingCode, url)
     return res.status(200).json(response)
   } catch (error) {
     return res.status(500).json(error)
