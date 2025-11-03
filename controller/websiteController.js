@@ -82,29 +82,14 @@ async function generateComponentCode(componentType, instruction) {
   const claudeKey = process.env.ANTHROPIC_API_KEY;
 
   const prompt = `Generate HTML and CSS code for a ${componentType} component based on this instruction: ${instruction}.
-  Return the response in this exact JSON format (without any markdown code blocks or backticks):
+  Return the response in this exact JSON format:
   {
     "html": "the HTML code here",
     "css": "the CSS code here"
   }
   Make the code clean, modern, and production-ready.`;
 
-  const systemPrompt = "You are an experienced programmer that generates clean HTML and CSS code. Always return responses in valid JSON format WITHOUT markdown code blocks or backticks. Return only the raw JSON object.";
-
-  // Helper function to extract JSON from markdown code blocks
-  function extractJSON(content) {
-    // Remove markdown code blocks if present
-    let cleaned = content.trim();
-    
-    // Remove ```json and ``` wrappers
-    if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.replace(/^```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '');
-    }
-    
-    return cleaned.trim();
-  }
+  const systemPrompt = "You are an experienced programmer that generates clean HTML and CSS code. Always return responses in valid JSON format.";
 
   try {
     // Try OpenAI first with 30 second timeout
@@ -139,8 +124,7 @@ async function generateComponentCode(componentType, instruction) {
 
     if (gptResponse.ok) {
       const messageContent = data.choices[0].message.content;
-      const cleanedContent = extractJSON(messageContent);
-      const generatedCode = JSON.parse(cleanedContent);
+      const generatedCode = JSON.parse(messageContent);
 
       return {
         html: generatedCode.html.toString(),
@@ -185,8 +169,7 @@ async function generateComponentCode(componentType, instruction) {
       }
 
       const messageContent = claudeData.content[0].text;
-      const cleanedContent = extractJSON(messageContent);
-      const generatedCode = JSON.parse(cleanedContent);
+      const generatedCode = JSON.parse(messageContent);
 
       return {
         html: generatedCode.html.toString(),
