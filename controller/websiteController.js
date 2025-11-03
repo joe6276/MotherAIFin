@@ -82,14 +82,73 @@ async function generateComponentCode(componentType, instruction) {
   const claudeKey = process.env.ANTHROPIC_API_KEY;
 
   const prompt = `Generate HTML and CSS code for a ${componentType} component based on this instruction: ${instruction}.
-  Return the response in this exact JSON format:
-  {
-    "html": "the HTML code here",
-    "css": "the CSS code here"
-  }
-  Make the code clean, modern, and production-ready.`;
+  
+  CRITICAL: Return ONLY a valid JSON object with this exact structure:
+  {"html": "HTML code here", "css": "CSS code here"}
+  
+  Important rules:
+  - Escape all quotes inside the HTML and CSS strings
+  - Keep code on single lines or use \\n for line breaks
+  - No markdown formatting, no code blocks, no backticks
+  - Return ONLY the raw JSON object
+  - Make the code clean, modern, and production-ready`;
 
-  const systemPrompt = "You are an experienced programmer that generates clean HTML and CSS code. Always return responses in valid JSON format.";
+  const systemPrompt = "You are an experienced programmer. You MUST return responses as valid JSON only. Escape all special characters properly. Never use markdown code blocks.";
+
+  // Enhanced JSON extraction and validation
+  function extractAndValidateJSON(content) {
+    let cleaned = content.trim();
+    
+    // Remove markdown code blocks
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '');
+    }
+    
+    cleaned = cleaned.trim();
+    
+    // Find JSON object boundaries
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error('No JSON object found in response');
+    }
+    
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    
+    // Try to parse
+    try {
+      const parsed = JSON.parse(cleaned);
+      
+      // Validate structure
+      if (!parsed.html || !parsed.css) {
+        throw new Error('Invalid JSON structure: missing html or css fields');
+      }
+      
+      return parsed;
+    } catch (e) {
+      // If parsing fails, try to fix common issues
+      console.log('Initial parse failed, attempting fixes...');
+      
+      // Attempt to fix unescaped quotes (basic fix)
+      let fixed = cleaned;
+      
+      // This is a last resort - try to extract using regex
+      const htmlMatch = cleaned.match(/"html"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      const cssMatch = cleaned.match(/"css"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      
+      if (htmlMatch && cssMatch) {
+        return {
+          html: htmlMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
+          css: cssMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+        };
+      }
+      
+      throw new Error(`JSON parsing failed: ${e.message}`);
+    }
+  }
 
   try {
     // Try OpenAI first with 30 second timeout
@@ -113,6 +172,7 @@ async function generateComponentCode(componentType, instruction) {
             },
           ],
           temperature: 0.7,
+          response_format: { type: "json_object" } // Force JSON mode
         }),
       }),
       new Promise((_, reject) => 
@@ -124,7 +184,7 @@ async function generateComponentCode(componentType, instruction) {
 
     if (gptResponse.ok) {
       const messageContent = data.choices[0].message.content;
-      const generatedCode = JSON.parse(messageContent);
+      const generatedCode = extractAndValidateJSON(messageContent);
 
       return {
         html: generatedCode.html.toString(),
@@ -165,11 +225,13 @@ async function generateComponentCode(componentType, instruction) {
 
       if (!claudeResponse.ok) {
         console.error("Claude API Error:", claudeData);
-        throw new Error("Claude API failed");
+        throw new Error(`Claude API failed: ${JSON.stringify(claudeData)}`);
       }
 
       const messageContent = claudeData.content[0].text;
-      const generatedCode = JSON.parse(messageContent);
+      console.log("Claude raw response:", messageContent.substring(0, 200)); // Debug log
+      
+      const generatedCode = extractAndValidateJSON(messageContent);
 
       return {
         html: generatedCode.html.toString(),
@@ -178,7 +240,23 @@ async function generateComponentCode(componentType, instruction) {
 
     } catch (claudeError) {
       console.error("Claude API Error:", claudeError);
-      throw claudeError;
+      
+      // Return fallback HTML/CSS
+      console.log("Both APIs failed, returning fallback component");
+      return {
+        html: `<div class="component-error">
+          <h3>Component Generation Error</h3>
+          <p>Unable to generate ${componentType} component. Please try again.</p>
+        </div>`,
+        css: `.component-error {
+          padding: 20px;
+          border: 2px solid #ff6b6b;
+          border-radius: 8px;
+          background: #ffe0e0;
+          color: #c92a2a;
+          text-align: center;
+        }`
+      };
     }
   }
 }
