@@ -14,4 +14,19 @@ async function generateVideo(req,res){
 
 
 
+async function run() {
+
+    try {
+        const response = await generateMultiSegmentAdvert("create for an AI Marketting Video for my company called JoeAI")
+        console.log(response);
+        
+    } catch (error) {
+        console.log(error);
+        
+    }
+    
+}
+
+// run()
+
 module.exports={generateVideo}
