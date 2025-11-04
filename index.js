@@ -33,7 +33,7 @@ app.use("/convo", convoRouter)
 app.use("/automation", automationRouter)
 
 app.get("/test", (req,res)=>{
-    res.status(200).send("<h1> Hello There Changes!!!! </h1>")
+    res.status(200).send("<h1> Hello  Changes!!!! </h1>")
 })
 
 app.listen(process.env.PORT, ()=>{
