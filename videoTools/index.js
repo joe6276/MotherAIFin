@@ -355,7 +355,7 @@ Each prompt should:
 }
 
 
-async function generateMultiSegmentAdvert(mainPrompt, numSegments = 4) {
+async function generateMultiSegmentAdvert(mainPrompt, numSegments = 1) {
   
     // Generate scripts for each segment
     console.log("📝 Generating video scripts...");
