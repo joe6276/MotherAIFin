@@ -1,7 +1,6 @@
 // uploadImageFile.js
 const { BlobServiceClient } = require("@azure/storage-blob");
 const path = require("path");
-const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -16,7 +15,7 @@ async function uploadImageFile(file) {
     await containerClient.createIfNotExists({ access: "blob" });
 
     const fileName = path.basename(file.originalname);
-    const blobName = `${uuidv4()}-${fileName}`;
+    const blobName = `${fileName}`;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     // Upload file buffer
