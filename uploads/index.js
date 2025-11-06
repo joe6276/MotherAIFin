@@ -30,5 +30,29 @@ async function uploadImageFile(file) {
 }
 
 
+async function uploadVideoToBlob(localFilePath) {
+  // Get connection string from environment variable
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  
+  if (!connectionString) {
+    throw new Error("AZURE_STORAGE_CONNECTION_STRING environment variable is not set");
+  }
+  
+  const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+  const containerName = "spareparts"; // customize as needed
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  await containerClient.createIfNotExists({ access: "blob" });
 
-module.exports = {uploadImageFile};
+  const blobName = path.basename(localFilePath);
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+  // Upload file stream
+  const fileStream = fs.createReadStream(localFilePath);
+  await blockBlobClient.uploadStream(fileStream, undefined, undefined, {
+    blobHTTPHeaders: { blobContentType: "video/mp4" }
+  });
+
+  console.log(`☁️ Uploaded to Azure Blob: ${blockBlobClient.url}`);
+  return blockBlobClient.url;
+}
+module.exports = {uploadImageFile, uploadVideoToBlob};

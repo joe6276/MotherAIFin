@@ -45,7 +45,7 @@ app.use("/automation", automationRouter)
 app.use("/auth", googleRouter)
 
 app.get("/test", (req,res)=>{
-    res.status(200).send("<h1> Hello  Changes!!!! </h1>")
+    res.status(200).send("<h1> Hello Again Changes!!!! </h1>")
 })
 
 app.listen(process.env.PORT, ()=>{

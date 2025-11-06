@@ -1,121 +1,104 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Transcribe Endpoint Tester</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload File to Drive</title>
   <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 24px; max-width: 860px; margin: auto; color:#111; }
-    .card { border: 1px solid #e6e6e6; border-radius: 10px; padding: 18px; margin-bottom: 16px; background: #fff; box-shadow: 0 6px 18px rgba(0,0,0,0.03); }
-    label { display:block; margin-bottom:8px; font-weight:600; }
-    #result { white-space: pre-wrap; background:#fafafa; padding:12px; border-radius:6px; border:1px solid #eee; margin-top:12px; max-height: 320px; overflow:auto; }
-    .hint { font-size: 0.9rem; color:#555; margin-top:6px; }
-    button { padding:8px 12px; border-radius:6px; border:1px solid #0b5fff; background:#0b5fff; color:white; cursor:pointer; }
-    button[disabled] { opacity:.6; cursor:not-allowed; }
-    .row { display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f6fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .upload-container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 350px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #2f3640;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"] {
+      margin-bottom: 15px;
+    }
+
+    button {
+      background-color: #0984e3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background-color: #74b9ff;
+    }
+
+    .message {
+      margin-top: 15px;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
-  <h1>Transcribe Endpoint Tester</h1>
 
-  <div class="card">
-    <label for="fileInput">Choose audio file (.mp3, .wav, .m4a, .ogg, ...)</label>
-    <input id="fileInput" type="file" accept="audio/*" />
-    <div class="hint">Make sure the field name is <code>audio</code> — it must match <code>upload.single("audio")</code> on the server.</div>
-
-    <div class="row">
-      <button id="sendBtn">Send to /transcribe (fetch)</button>
-      <button id="openFormBtn" type="button">Open plain form (fallback)</button>
-      <select id="modelSelect" title="response format" style="margin-left:auto;">
-        <option value="text">response_format: text</option>
-        <option value="json">response_format: json</option>
-      </select>
-    </div>
-
-    <div id="status" class="hint" style="margin-top:8px;"></div>
-    <div id="result" hidden></div>
-  </div>
-
-  <div class="card">
-    <strong>Plain HTML form (fallback)</strong>
-    <p class="hint">If CORS is allowed on your server, this form will POST directly to the endpoint and open response in a new tab. If CORS prevents direct browser POSTs, either enable CORS on the backend or use the fetch button above while serving this file from a local server.</p>
-
-    <form id="plainForm" method="POST" enctype="multipart/form-data" action="https://motherai-degdaeasczdmdbh0.eastus-01.azurewebsites.net/convo" target="_blank">
-      <input type="file" name="audio" accept="audio/*" required />
-      <button type="submit" style="margin-left:8px;">Submit Form</button>
-    </form>
+  <div class="upload-container">
+    <h2>Upload File</h2>
+    <input type="file" id="fileInput" />
+    <br />
+    <button id="uploadBtn">Upload</button>
+    <div class="message" id="message"></div>
   </div>
 
   <script>
-    const endpoint = "https://motherai-degdaeasczdmdbh0.eastus-01.azurewebsites.net/convo";
-    const fileInput = document.getElementById("fileInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const openFormBtn = document.getElementById("openFormBtn");
-    const statusEl = document.getElementById("status");
-    const resultEl = document.getElementById("result");
-    const modelSelect = document.getElementById("modelSelect");
-    const plainForm = document.getElementById("plainForm");
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    const message = document.getElementById('message');
 
-    openFormBtn.addEventListener("click", () => {
-      // open a new tab with the plain form action so user can use fallback
-      window.open("", "_blank");
-      alert("Use the plain form below to test a direct POST. You must still choose a file in the form.");
-    });
-
-    sendBtn.addEventListener("click", async () => {
-      resultEl.hidden = true;
-      statusEl.textContent = "";
-      const file = fileInput.files && fileInput.files[0];
+    uploadBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
       if (!file) {
-        statusEl.textContent = "❗ Please choose an audio file first.";
+        message.innerHTML = "⚠️ Please select a file first.";
         return;
       }
 
-      sendBtn.disabled = true;
-      sendBtn.textContent = "Uploading…";
-      statusEl.textContent = "Sending file to server...";
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folderId", "1KLWXj89GLwV0kJwkr9_tuwrfDrNgH-A0");
+
+      message.innerHTML = "⏳ Uploading...";
 
       try {
-        const formData = new FormData();
-        // IMPORTANT: field name must match multer call upload.single("audio")
-        formData.append("audio", file, file.name);
-
-        // If you want to pass extra fields, add them to formData, e.g. model/format:
-        formData.append("response_format", modelSelect.value);
-
-        const resp = await fetch(endpoint, {
+        const response = await fetch("https://12e33947ade1.ngrok-free.app/auth/add", {
           method: "POST",
-          body: formData,
-          // DO NOT set Content-Type header manually — browser sets the multipart boundary
+          body: formData
         });
 
-        const contentType = resp.headers.get("content-type") || "";
+        const result = await response.json();
 
-        let body;
-        if (contentType.includes("application/json")) {
-          body = await resp.json();
-          resultEl.textContent = JSON.stringify(body, null, 2);
+        if (response.ok && result.success) {
+          message.innerHTML = `✅ File uploaded successfully: <b>${result.file.name}</b>`;
         } else {
-          body = await resp.text();
-          resultEl.textContent = body;
+          message.innerHTML = `❌ Upload failed: ${result.error || "Unknown error"}`;
         }
-
-        if (!resp.ok) {
-          statusEl.textContent = `Server responded with ${resp.status} ${resp.statusText}`;
-        } else {
-          statusEl.textContent = "✅ Server response:";
-        }
-
-        resultEl.hidden = false;
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = "❌ Request failed — check console for details. Common causes: CORS or endpoint not reachable.";
-        resultEl.hidden = true;
-      } finally {
-        sendBtn.disabled = false;
-        sendBtn.textContent = "Send to /transcribe (fetch)";
+      } catch (error) {
+        console.error(error);
+        message.innerHTML = "🚫 Error connecting to the server.";
       }
     });
   </script>
+
 </body>
 </html>
