@@ -17,5 +17,8 @@ CREATE TABLE Users (
 );
 
 
-
+ALTER TABLE Users
+ADD PasswordResetToken NVARCHAR(500) NULL,
+    PasswordResetExpires DATETIME NULL;
+    
 SELECT * FROM Users
