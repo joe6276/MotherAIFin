@@ -15,11 +15,25 @@ async function register(req, res) {
             .input('Name', sql.NVarChar, name)
             .input('Password', sql.NVarChar, hashedPassword)
             .query('INSERT INTO Users (Email, Name, Password) VALUES (@Email, @Name, @Password)')
+
+        await pool.request()
+            .input('Email', sql.NVarChar, email)
+            .query(`
+                INSERT INTO Subscriptions (Email)
+                VALUES (@Email)
+            `);
+
+
         return res.status(200).json({ message: "User Registered Successfully" })
     } catch (error) {
+
+        console.log(error);
+
         return res.status(500).json({ message: error.message })
     }
 }
+
+
 
 
 async function login(req, res) {
@@ -247,7 +261,7 @@ async function forgotPassword(req, res) {
 
 
     } catch (error) {
-  
+
         res.status(500).json({ message: error.message })
     }
 
@@ -264,26 +278,26 @@ async function resetPassword(req, res) {
 
         const user = result.recordset[0];
 
-        
+
         if (!user) {
-            return res.status(404).json({message:"User Not Found"})
+            return res.status(404).json({ message: "User Not Found" })
         }
 
         // 2. Check if token has expired
         const tokenExpiry = new Date(user.PasswordResetExpires);
         const now = new Date();
 
-        
+
 
         if (tokenExpiry > now) {
             const hashedPassword = await bcrypt.hash(password, 10);
 
-             await pool.request()
-        .input("Email", sql.NVarChar, user.Email)
-        .input("Password", sql.NVarChar, hashedPassword)
-        .input("PasswordResetToken", sql.NVarChar, "")
-        .input("PasswordResetExpires", sql.DateTime, new Date())
-        .query(`
+            await pool.request()
+                .input("Email", sql.NVarChar, user.Email)
+                .input("Password", sql.NVarChar, hashedPassword)
+                .input("PasswordResetToken", sql.NVarChar, "")
+                .input("PasswordResetExpires", sql.DateTime, new Date())
+                .query(`
           UPDATE Users
           SET 
             Password = @Password,
@@ -293,24 +307,16 @@ async function resetPassword(req, res) {
         `);
 
 
-          return res.status(200).json({message:"Password Reset Successfully"})
-        }else{
-             return res.status(400).json({message:"Token Expired"})
+            return res.status(200).json({ message: "Password Reset Successfully" })
+        } else {
+            return res.status(400).json({ message: "Token Expired" })
         }
     } catch (error) {
-        return res.status(500).json({message: error.message})
+        return res.status(500).json({ message: error.message })
     }
 }
 
 
-// async function run() {
-//     const res = await forgotPassword('joendambuki16@gmail.com','https://intl-colt.online')
-
-
-
-// }
-
-// run()
 
 
 module.exports = { register, login, forgotPassword, resetPassword }
