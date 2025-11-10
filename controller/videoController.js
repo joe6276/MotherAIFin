@@ -1,4 +1,5 @@
 const { generateMultiSegmentAdvert } = require("../videoTools");
+const { checkSubscription } = require("./paymentController");
 
 
 async function generateVideo(req, res) {

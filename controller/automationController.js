@@ -1,6 +1,7 @@
 const dotenv = require("dotenv")
 const path = require("path");
 const { SEO_WEBSITE_PROMPT } = require("../data/seoResult");
+const { checkSubscription } = require("./paymentController");
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 

@@ -1,5 +1,6 @@
 const dotenv = require("dotenv")
-const path = require("path")
+const path = require("path");
+const { checkSubscription } = require("./paymentController");
 dotenv.config({path:path.resolve(__dirname, "../.env")})
 
 async function copyWriting(question) {

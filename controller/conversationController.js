@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") })
 const { BlobServiceClient } = require("@azure/storage-blob");
 const OpenAI = require("openai")
 const { uploadImageFile } = require("../uploads")
+const { checkSubscription } = require("./paymentController")
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function uploadAFile(fileBuffer, fileName) {

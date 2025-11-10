@@ -4,7 +4,8 @@ const path = require("path");
 dotenv.config({path:path.resolve(__dirname, "../.env")})
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const {BlobServiceClient}= require("@azure/storage-blob")
+const {BlobServiceClient}= require("@azure/storage-blob");
+const { checkSubscription } = require("./paymentController");
 
 async function generateAndUploadImage(prompt) {
   // Replace spaces & special chars safely

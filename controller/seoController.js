@@ -3,6 +3,7 @@ const cheerio = require("cheerio")
 const dotenv = require('dotenv')
 const path = require("path")
 const { SEO_SYSTEM_PROMPT, SEO_WEBSITE_PROMPT, seoUpdatePromptMaker } = require("../data/seoResult")
+const { checkSubscription } = require("./paymentController")
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
