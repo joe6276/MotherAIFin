@@ -1,7 +1,7 @@
 const dotenv = require("dotenv")
 const path = require("path")
 const fs = require('fs')
-const axios= require('axios')
+const axios = require('axios')
 const os = require('os')
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 const { BlobServiceClient } = require("@azure/storage-blob");
@@ -10,24 +10,24 @@ const { uploadImageFile } = require("../uploads")
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function uploadAFile(fileBuffer, fileName) {
-  // Example: using Azure Blob Storage SDK
+    // Example: using Azure Blob Storage SDK
 
-  const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
 
-  const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
-  const containerClient = blobServiceClient.getContainerClient("spareparts");
+    const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    const containerClient = blobServiceClient.getContainerClient("spareparts");
 
-  const blockBlobClient = containerClient.getBlockBlobClient(fileName);
-  await blockBlobClient.uploadData(fileBuffer, {
-    blobHTTPHeaders: { blobContentType: "audio/mpeg" },
-  });
+    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+    await blockBlobClient.uploadData(fileBuffer, {
+        blobHTTPHeaders: { blobContentType: "audio/mpeg" },
+    });
 
-  const fileUrl = blockBlobClient.url;
- 
-  return fileUrl;
+    const fileUrl = blockBlobClient.url;
+
+    return fileUrl;
 }
 
-async function textToSpeech(text, voice="cedar") {
+async function textToSpeech(text, voice = "cedar") {
 
     const response = await openai.audio.speech.create({
         model: "gpt-4o-mini-tts",   // or "gpt-4o-mini"
@@ -41,7 +41,7 @@ async function textToSpeech(text, voice="cedar") {
 
     const fileName = `openai_tts_${Date.now()}.mp3`;
     const fileUrl = await uploadAFile(buffer, fileName);
-   
+
     return fileUrl;
 }
 
@@ -52,7 +52,7 @@ async function transcribeFromUrl(audioUrl) {
             throw new Error("Missing or invalid 'audioUrl'");
         }
 
-        
+
 
         // Download the audio file temporarily
         const response = await axios.get(audioUrl, { responseType: "arraybuffer" });
@@ -62,7 +62,7 @@ async function transcribeFromUrl(audioUrl) {
         const tempPath = path.join(os.tmpdir(), `audio_${Date.now()}${extension}`);
         fs.writeFileSync(tempPath, response.data);
 
-      
+
 
         // Transcribe with OpenAI Whisper
         const transcription = await openai.audio.transcriptions.create({
@@ -76,14 +76,14 @@ async function transcribeFromUrl(audioUrl) {
 
         return transcription;
     } catch (error) {
-                throw error;
+        throw error;
     }
 }
 async function motherAI(question) {
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
     const prompt = "You are a helpful AI assistant. Provide clear, accurate, and concise responses.";
-    
+
     try {
         // Try OpenAI first with 30 second timeout
         const gptResponse = await Promise.race([
@@ -108,7 +108,7 @@ async function motherAI(question) {
                     temperature: 0.7
                 })
             }),
-            new Promise((_, reject) => 
+            new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
             )
         ]);
@@ -119,17 +119,17 @@ async function motherAI(question) {
             const answer = data.choices[0].message.content;
             return answer;
         } else {
-      
+
             throw new Error("OpenAI API failed");
         }
 
     } catch (error) {
-       
-        
+
+
         // Fallback to Claude API
         try {
-           
-            
+
+
 
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
                 method: "POST",
@@ -155,7 +155,7 @@ async function motherAI(question) {
             const claudeData = await claudeResponse.json();
 
             if (!claudeResponse.ok) {
-             
+
                 throw new Error("Claude API failed");
             }
 
@@ -163,7 +163,7 @@ async function motherAI(question) {
             return answer;
 
         } catch (claudeError) {
-            
+
             throw claudeError;
         }
     }
@@ -173,14 +173,20 @@ async function conversationalist(req, res) {
         if (!req.file) {
             return res.status(400).json({ error: "No audio file provided" });
         }
-        const {voice}= req.body
+        const { voice, userId } = req.body
+
+
+        var checkSub = await checkSubscription(userId)
+        if (!checkSub) {
+            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        }
 
         const URL = await uploadImageFile(req.file)
         const texts = await transcribeFromUrl(URL)
         const answer = await motherAI(texts)
-        const response=await textToSpeech(answer,voice)
+        const response = await textToSpeech(answer, voice)
 
-        return res.status(200).json({url:response})
+        return res.status(200).json({ url: response })
 
     } catch (error) {
         // console.error("❌ Whisper API Error:", error.response?.data || error.message);
@@ -190,4 +196,4 @@ async function conversationalist(req, res) {
 }
 
 
-module.exports={conversationalist}
+module.exports = { conversationalist }

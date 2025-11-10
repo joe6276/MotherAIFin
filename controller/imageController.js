@@ -45,7 +45,12 @@ const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STR
 
 async function uploadAnImage(req,res){
     try {
-       const {instruction}= req.body
+       const {instruction, userId}= req.body
+       
+      var checkSub= await checkSubscription(userId)
+      if(!checkSub){
+        return res.status(400).json({ error: "Kindly Check your Subscription" });
+      }
         const image = await generateAndUploadImage(instruction)
         return res.status(200).json({url:image})
     } catch (error) {

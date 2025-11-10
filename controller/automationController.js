@@ -122,7 +122,12 @@ async function chooseAgentsFunc(instruction) {
 async function chooseAgent(req, res) {
 
     try {
-        const { instruction } = req.body
+        const { instruction, userId } = req.body
+
+        var checkSub = await checkSubscription(userId)
+        if (!checkSub) {
+            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        }
         const response = await chooseAgentsFunc(instruction)
 
         return res.status(200).json(response)
@@ -223,10 +228,10 @@ async function seoFunc(instruction) {
 
 
 async function websiteFunc(instruction) {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const claudeKey = process.env.ANTHROPIC_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const claudeKey = process.env.ANTHROPIC_API_KEY;
 
-  const prompt = `Generate HTML and CSS code for a website based on this instruction: ${instruction}.
+    const prompt = `Generate HTML and CSS code for a website based on this instruction: ${instruction}.
   
   CRITICAL: Return ONLY a valid JSON object with this exact structure:
   {"html": "HTML code here", "css": "CSS code here"}
@@ -238,162 +243,162 @@ async function websiteFunc(instruction) {
   - Return ONLY the raw JSON object
   - Make the code clean, modern, and production-ready`;
 
-  const systemPrompt = "You are an experienced programmer. You MUST return responses as valid JSON only. Escape all special characters properly. Never use markdown code blocks.";
+    const systemPrompt = "You are an experienced programmer. You MUST return responses as valid JSON only. Escape all special characters properly. Never use markdown code blocks.";
 
-  // Enhanced JSON extraction and validation
-  function extractAndValidateJSON(content) {
-    let cleaned = content.trim();
-    
-    // Remove markdown code blocks
-    if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.replace(/^```json\s*/, '').replace(/```\s*$/, '');
-    } else if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '');
-    }
-    
-    cleaned = cleaned.trim();
-    
-    // Find JSON object boundaries
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    
-    if (jsonStart === -1 || jsonEnd === -1) {
-      throw new Error('No JSON object found in response');
-    }
-    
-    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-    
-    // Try to parse
-    try {
-      const parsed = JSON.parse(cleaned);
-      
-      // Validate structure
-      if (!parsed.html || !parsed.css) {
-        throw new Error('Invalid JSON structure: missing html or css fields');
-      }
-      
-      return parsed;
-    } catch (e) {
-      // If parsing fails, try to fix common issues
-      console.log('Initial parse failed, attempting fixes...');
-      
-      // Attempt to fix unescaped quotes (basic fix)
-      let fixed = cleaned;
-      
-      // This is a last resort - try to extract using regex
-      const htmlMatch = cleaned.match(/"html"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-      const cssMatch = cleaned.match(/"css"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-      
-      if (htmlMatch && cssMatch) {
-        return {
-          html: htmlMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
-          css: cssMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
-        };
-      }
-      
-      throw new Error(`JSON parsing failed: ${e.message}`);
-    }
-  }
+    // Enhanced JSON extraction and validation
+    function extractAndValidateJSON(content) {
+        let cleaned = content.trim();
 
-  try {
-    // Try OpenAI first with 30 second timeout
-    const gptResponse = await Promise.race([
-      fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openaiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: systemPrompt,
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.7,
-          response_format: { type: "json_object" } // Force JSON mode
-        }),
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
-      )
-    ]);
+        // Remove markdown code blocks
+        if (cleaned.startsWith('```json')) {
+            cleaned = cleaned.replace(/^```json\s*/, '').replace(/```\s*$/, '');
+        } else if (cleaned.startsWith('```')) {
+            cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '');
+        }
 
-    const data = await gptResponse.json();
+        cleaned = cleaned.trim();
 
-    if (gptResponse.ok) {
-      const messageContent = data.choices[0].message.content;
-      const generatedCode = extractAndValidateJSON(messageContent);
+        // Find JSON object boundaries
+        const jsonStart = cleaned.indexOf('{');
+        const jsonEnd = cleaned.lastIndexOf('}');
 
-      return {
-        html: generatedCode.html.toString(),
-        css: generatedCode.css.toString()
-      };
-    } else {
-      console.error("OpenAI API Error:", data);
-      throw new Error("OpenAI API failed");
-    }
+        if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error('No JSON object found in response');
+        }
 
-  } catch (error) {
-    console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-    
-    // Fallback to Claude API
-    try {
-      const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": claudeKey,
-          "anthropic-version": "2023-06-01"
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
-          system: systemPrompt,
-          messages: [
-            {
-              role: "user",
-              content: prompt
+        cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+
+        // Try to parse
+        try {
+            const parsed = JSON.parse(cleaned);
+
+            // Validate structure
+            if (!parsed.html || !parsed.css) {
+                throw new Error('Invalid JSON structure: missing html or css fields');
             }
-          ],
-          temperature: 0.7
-        })
-      });
 
-      const claudeData = await claudeResponse.json();
+            return parsed;
+        } catch (e) {
+            // If parsing fails, try to fix common issues
+            console.log('Initial parse failed, attempting fixes...');
 
-      if (!claudeResponse.ok) {
-        console.error("Claude API Error:", claudeData);
-        throw new Error(`Claude API failed: ${JSON.stringify(claudeData)}`);
-      }
+            // Attempt to fix unescaped quotes (basic fix)
+            let fixed = cleaned;
 
-      const messageContent = claudeData.content[0].text;
-      console.log("Claude raw response:", messageContent.substring(0, 200)); // Debug log
-      
-      const generatedCode = extractAndValidateJSON(messageContent);
+            // This is a last resort - try to extract using regex
+            const htmlMatch = cleaned.match(/"html"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            const cssMatch = cleaned.match(/"css"\s*:\s*"((?:[^"\\]|\\.)*)"/);
 
-      return {
-        html: generatedCode.html.toString(),
-        css: generatedCode.css.toString()
-      };
+            if (htmlMatch && cssMatch) {
+                return {
+                    html: htmlMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
+                    css: cssMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+                };
+            }
 
-    } catch (claudeError) {
-      console.error("Claude API Error:", claudeError);
-      
-      // Return fallback HTML/CSS
-      console.log("Both APIs failed, returning fallback component");
-      return {
-        html: `<div class="component-error">
+            throw new Error(`JSON parsing failed: ${e.message}`);
+        }
+    }
+
+    try {
+        // Try OpenAI first with 30 second timeout
+        const gptResponse = await Promise.race([
+            fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${openaiKey}`,
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: systemPrompt,
+                        },
+                        {
+                            role: "user",
+                            content: prompt,
+                        },
+                    ],
+                    temperature: 0.7,
+                    response_format: { type: "json_object" } // Force JSON mode
+                }),
+            }),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
+            )
+        ]);
+
+        const data = await gptResponse.json();
+
+        if (gptResponse.ok) {
+            const messageContent = data.choices[0].message.content;
+            const generatedCode = extractAndValidateJSON(messageContent);
+
+            return {
+                html: generatedCode.html.toString(),
+                css: generatedCode.css.toString()
+            };
+        } else {
+            console.error("OpenAI API Error:", data);
+            throw new Error("OpenAI API failed");
+        }
+
+    } catch (error) {
+        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+
+        // Fallback to Claude API
+        try {
+            const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": claudeKey,
+                    "anthropic-version": "2023-06-01"
+                },
+                body: JSON.stringify({
+                    model: "claude-sonnet-4-20250514",
+                    max_tokens: 4096,
+                    system: systemPrompt,
+                    messages: [
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7
+                })
+            });
+
+            const claudeData = await claudeResponse.json();
+
+            if (!claudeResponse.ok) {
+                console.error("Claude API Error:", claudeData);
+                throw new Error(`Claude API failed: ${JSON.stringify(claudeData)}`);
+            }
+
+            const messageContent = claudeData.content[0].text;
+            console.log("Claude raw response:", messageContent.substring(0, 200)); // Debug log
+
+            const generatedCode = extractAndValidateJSON(messageContent);
+
+            return {
+                html: generatedCode.html.toString(),
+                css: generatedCode.css.toString()
+            };
+
+        } catch (claudeError) {
+            console.error("Claude API Error:", claudeError);
+
+            // Return fallback HTML/CSS
+            console.log("Both APIs failed, returning fallback component");
+            return {
+                html: `<div class="component-error">
           <h3>Component Generation Error</h3>
           <p>Unable to generate ${componentType} component. Please try again.</p>
         </div>`,
-        css: `.component-error {
+                css: `.component-error {
           padding: 20px;
           border: 2px solid #ff6b6b;
           border-radius: 8px;
@@ -401,17 +406,17 @@ async function websiteFunc(instruction) {
           color: #c92a2a;
           text-align: center;
         }`
-      };
+            };
+        }
     }
-  }
 }
 
- 
+
 function formatAgentOutput(output) {
     if (typeof output === 'string') {
         return output;
     }
-    
+
     if (typeof output === 'object' && output !== null) {
         // Handle website agent format specifically
         if (output.html && output.css) {
@@ -425,11 +430,11 @@ CSS Code:
 ${output.css}
 \`\`\``;
         }
-        
+
         // Handle other object formats
         return JSON.stringify(output, null, 2);
     }
-    
+
     return String(output);
 }
 
@@ -715,15 +720,15 @@ function createTailoredInstruction(
 
 const agentFunctions = {
     website: async (instruction) => {
-      const website = await websiteFunc(instruction)
-      return website
+        const website = await websiteFunc(instruction)
+        return website
     },
     seo: async (instruction) => {
-       const seo = await seoFunc(instruction)
+        const seo = await seoFunc(instruction)
         return seo
     },
     copyWriting: async (instruction) => {
-        const copywriting= await copyWritingFunc(instruction)
+        const copywriting = await copyWritingFunc(instruction)
         return copywriting
     },
     video: async (instruction) => {
@@ -747,8 +752,8 @@ async function chainAgents(originalInstruction, agentChain, agentFunctions) {
         const extraInstruction = agentConfig.instruction || null;
         const agentFunction = agentFunctions[agentName];
 
-      
-        
+
+
 
         if (!agentFunction) {
             throw new Error(`Agent function not found: ${agentName}`);
@@ -773,8 +778,8 @@ async function chainAgents(originalInstruction, agentChain, agentFunctions) {
         // Execute the agent with the tailored instruction
         const respons = await agentFunction(tailoredInstruction);
         const output = formatAgentOutput(respons)
-        
-        console.dir(output) ;
+
+        console.dir(output);
 
         // Store result
         results.push({
@@ -800,7 +805,7 @@ async function chainAgents(originalInstruction, agentChain, agentFunctions) {
 }
 
 async function run() {
-        const agentChain = [
+    const agentChain = [
         {
             name: "website",
             instruction: "Focus on modern, for a coffee Shop website minimalist design. Include a reservation system."
@@ -811,23 +816,28 @@ async function run() {
         }
     ];
 
-     const result = await chainAgents(
+    const result = await chainAgents(
         "Generate an SEO friendly website for a coffee shop",
         agentChain,
         agentFunctions
     );
 
     // Access results
-    
-    
+
+
     return result;
 }
 
-async function automationCombiner(req,res){
+async function automationCombiner(req, res) {
     try {
-        const { originalInstruction, agentChain}= req.body
+        const { originalInstruction, agentChain, userId } = req.body
 
-        const result = await chainAgents(originalInstruction,agentChain,agentFunctions)
+
+        var checkSub = await checkSubscription(userId)
+        if (!checkSub) {
+            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        }
+        const result = await chainAgents(originalInstruction, agentChain, agentFunctions)
 
         return res.status(200).json(result)
     } catch (error) {

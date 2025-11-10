@@ -74,6 +74,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const { createFileinDateFolder } = require('../google');
 const { url } = require('inspector');
+const { checkSubscription } = require('./paymentController');
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
@@ -263,7 +264,12 @@ async function generateComponentCode(componentType, instruction) {
 
 async function websiteAgent(req, res) {
   try {
-    const { component, instruction } = req.body;
+    const { component, instruction, userId } = req.body;
+
+  var checkSub= await checkSubscription(userId)
+    if(!checkSub){
+      return res.status(400).json({ error: "Kindly Check your Subscription" });
+    }
     const response = await generateComponentCode(component, instruction);
     return res.status(200).json(response);
   } catch (error) {
@@ -427,7 +433,12 @@ Make the code clean, modern, and production-ready.`;
 async function updateComponentCode(req,res){
   try {
     
-    const {component, instruction, existingCode, url}= req.body
+    const {component, instruction, existingCode, url, userId}= req.body
+
+      var checkSub= await checkSubscription(userId)
+    if(!checkSub){
+      return res.status(400).json({ error: "Kindly Check your Subscription" });
+    }
     const response = await updateComponent(component,instruction,existingCode, url)
     return res.status(200).json(response)
   } catch (error) {

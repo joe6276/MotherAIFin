@@ -93,7 +93,14 @@ async function copyWriting(question) {
 }
 
 async function copyWritingAgent(req, res) {
-    const { instruction } = req.body;
+    const { instruction, userId } = req.body;
+
+    
+      var checkSub= await checkSubscription(userId)
+    if(!checkSub){
+      return res.status(400).json({ error: "Kindly Check your Subscription" });
+    }
+
 
     try {
         const response = await copyWriting(instruction);

@@ -8,19 +8,27 @@ async function register(req, res) {
     try {
         const { email, name, password } = req.body
         const hashedPassword = await bcrypt.hash(password, 8)
+const pool = await sql.connect(sqlConfig);
 
-        const pool = await sql.connect(sqlConfig)
-        const result = await pool.request()
-            .input('Email', sql.NVarChar, email)
-            .input('Name', sql.NVarChar, name)
-            .input('Password', sql.NVarChar, hashedPassword)
-            .query('INSERT INTO Users (Email, Name, Password) VALUES (@Email, @Name, @Password)')
+const result = await pool.request()
+    .input('Email', sql.NVarChar, email)
+    .input('Name', sql.NVarChar, name)
+    .input('Password', sql.NVarChar, hashedPassword)
+    .query(`
+        INSERT INTO Users (Email, Name, Password)
+        OUTPUT INSERTED.Id
+        VALUES (@Email, @Name, @Password)
+    `);
+
+    const insertedId = result.recordset[0].Id;
+
 
         await pool.request()
             .input('Email', sql.NVarChar, email)
+             .input('UserId', sql.NVarChar, insertedId.toString())
             .query(`
-                INSERT INTO Subscriptions (Email)
-                VALUES (@Email)
+                INSERT INTO Subscriptions (Email,UserId)
+                VALUES (@Email, @UserId)
             `);
 
 

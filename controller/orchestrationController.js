@@ -1,11 +1,12 @@
 const dotenv = require('dotenv')
-const path = require("path")
+const path = require("path");
+const { checkSubscription } = require('./paymentController');
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 async function chooseAgent(instruction) {
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
-    
+
     const prompt = `    
     You are an expert AI agent selector. Based on the user's instruction, choose the most suitable agent from the following options: website, seo, copyWriting, video, motherAI.
     The Agents do the following:
@@ -43,7 +44,7 @@ async function chooseAgent(instruction) {
                     temperature: 0.7
                 })
             }),
-            new Promise((_, reject) => 
+            new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
             )
         ]);
@@ -60,7 +61,7 @@ async function chooseAgent(instruction) {
 
     } catch (error) {
         console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-        
+
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -103,7 +104,12 @@ async function chooseAgent(instruction) {
 
 async function orchestrationAgent(req, res) {
     try {
-        const { instruction } = req.body;
+        const { instruction, userId } = req.body;
+
+        var checkSub = await checkSubscription(userId)
+        if (!checkSub) {
+            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        }
         const response = await chooseAgent(instruction);
         return res.status(200).json({ selectedAgent: response });
     } catch (error) {

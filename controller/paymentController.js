@@ -49,13 +49,13 @@ async function stripePayment(payment) {
 
 
 async function validatePayment(stripeSessionId) {
-  
+
 
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
     // Get the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
-  
+
 
     const paymentIntentId = session.payment_intent;
 
@@ -66,8 +66,8 @@ async function validatePayment(stripeSessionId) {
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
     if (paymentIntent.status === "succeeded") {
-        const payId= paymentIntent.id;       
-       await updatePaymentIntent(stripeSessionId, payId)
+        const payId = paymentIntent.id;
+        await updatePaymentIntent(stripeSessionId, payId)
         return true;
     }
 
@@ -76,44 +76,44 @@ async function validatePayment(stripeSessionId) {
 }
 
 async function updateStripeSessionId(stripeSessionId, email) {
-   try {
+    try {
 
-    
-     const pool = await sql.connect(sqlConfig)
-    await pool.request()
-        .input('Email', sql.NVarChar, email)  
-        .input('StripeSessionId', sql.NVarChar, stripeSessionId)
-        .query(`
+
+        const pool = await sql.connect(sqlConfig)
+        await pool.request()
+            .input('Email', sql.NVarChar, email)
+            .input('StripeSessionId', sql.NVarChar, stripeSessionId)
+            .query(`
     UPDATE Subscriptions
     SET StripeSessionId = @StripeSessionId
     WHERE Email = @Email
   `);
 
 
-  
-   } catch (error) {
-   
-    
-    throw new Error(error.messsage)
-   }
+
+    } catch (error) {
+
+
+        throw new Error(error.messsage)
+    }
 }
 
 
 
 async function updatePaymentIntent(stripeSessionId, paymentIntentId) {
-   try {
- const pool = await sql.connect(sqlConfig)
-    await pool.request()
-        .input('StripeSessionId', sql.NVarChar, stripeSessionId)
-        .input('PaymentIntentId', sql.NVarChar, paymentIntentId)
-        .query(`
+    try {
+        const pool = await sql.connect(sqlConfig)
+        await pool.request()
+            .input('StripeSessionId', sql.NVarChar, stripeSessionId)
+            .input('PaymentIntentId', sql.NVarChar, paymentIntentId)
+            .query(`
     UPDATE Subscriptions
     SET PaymentIntentId = @PaymentIntentId
     WHERE StripeSessionId = @StripeSessionId
   `);
-   } catch (error) {
-    throw new Error(error.messsage)
-   }
+    } catch (error) {
+        throw new Error(error.messsage)
+    }
 }
 
 
@@ -128,33 +128,67 @@ const samplePayment = {
 };
 
 
-async function addPayment(req,res) {
+async function addPayment(req, res) {
     try {
-        
-        const {amount, successURL,cancelURL,email}= req.body
-        const samplePayment={
+
+        const { amount, successURL, cancelURL, email } = req.body
+        const samplePayment = {
             amount,
             successURL,
             cancelURL,
             email
         }
-        const response= await stripePayment(samplePayment)
+        const response = await stripePayment(samplePayment)
         return res.status(200).json(response)
     } catch (error) {
         return res.status(500).json(error.messsage)
     }
 }
 
-async function validateStripePayment(req,res) {
-try {
-        const {stripeSessionId}= req.body
+async function validateStripePayment(req, res) {
+    try {
+        const { stripeSessionId } = req.body
 
-        var response= await validatePayment(stripeSessionId)
-        return res.status(200).json({response})
-} catch (error) {
-    return res.status(500).json(error.messsage)
+        var response = await validatePayment(stripeSessionId)
+        return res.status(200).json({ response })
+    } catch (error) {
+        return res.status(500).json(error.messsage)
+    }
 }
+
+
+async function checkSubscription(userId) {
+    try {
+        const pool = await sql.connect(sqlConfig);
+
+        const result = await pool.request()
+            .input('UserID', sql.Int, userId)
+            .query(`
+        SELECT * FROM Subscriptions
+        WHERE UserId = @UserID
+    `);
+
+        const user = result.recordset[0];
+        const now = new Date();
+      
+        if(user ==undefined){
+            return false
+        }
+        if(now > user.ExpiryDate){
+            return false
+            
+        }else{
+            return true
+        }
+
+    } catch (error) {
+        console.log(error);
+        return false
+    }
 }
 
 
-module.exports={addPayment, validateStripePayment}
+
+
+
+module.exports = { addPayment, validateStripePayment, checkSubscription }

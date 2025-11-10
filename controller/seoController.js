@@ -2,7 +2,7 @@ const axios = require("axios")
 const cheerio = require("cheerio")
 const dotenv = require('dotenv')
 const path = require("path")
-const {SEO_SYSTEM_PROMPT,SEO_WEBSITE_PROMPT, seoUpdatePromptMaker}= require("../data/seoResult")
+const { SEO_SYSTEM_PROMPT, SEO_WEBSITE_PROMPT, seoUpdatePromptMaker } = require("../data/seoResult")
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
@@ -372,7 +372,7 @@ async function seoAgentFunc(seoResults, $) {
                     temperature: 0.7
                 })
             }),
-            new Promise((_, reject) => 
+            new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
             )
         ]);
@@ -389,7 +389,7 @@ async function seoAgentFunc(seoResults, $) {
 
     } catch (error) {
         console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-        
+
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -433,7 +433,13 @@ async function seoAgentFunc(seoResults, $) {
 async function seoAgent(req, res) {
     try {
         const agent = new SEOAgent();
-        const { url } = req.body;
+        const { url, userId } = req.body;
+
+        
+      var checkSub= await checkSubscription(userId)
+    if(!checkSub){
+      return res.status(400).json({ error: "Kindly Check your Subscription" });
+    }
         const result = await agent.analyzeSEO(url);
         const aiResponse = await seoAgentFunc(result, result.$);
         result.aiResponse = aiResponse;
@@ -474,7 +480,7 @@ async function seoArticlesFunc(instruction) {
                     temperature: 0.7
                 })
             }),
-            new Promise((_, reject) => 
+            new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
             )
         ]);
@@ -491,7 +497,7 @@ async function seoArticlesFunc(instruction) {
 
     } catch (error) {
         console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-        
+
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -535,7 +541,7 @@ async function seoArticlesFunc(instruction) {
 async function seoWebsiteFunc(instruction) {
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
-    
+
     try {
         // Try OpenAI first with 30 second timeout
         const gptResponse = await Promise.race([
@@ -560,7 +566,7 @@ async function seoWebsiteFunc(instruction) {
                     temperature: 0.7
                 })
             }),
-            new Promise((_, reject) => 
+            new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
             )
         ]);
@@ -577,7 +583,7 @@ async function seoWebsiteFunc(instruction) {
 
     } catch (error) {
         console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-        
+
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -621,7 +627,7 @@ async function seoWebsiteFunc(instruction) {
 async function seoUpdateWebsiteFunc(instruction, existingCode, url) {
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
-    const SEO_UPDATE_WEBSITE_PROMPT = seoUpdatePromptMaker(existingCode,url)
+    const SEO_UPDATE_WEBSITE_PROMPT = seoUpdatePromptMaker(existingCode, url)
     try {
         // Try OpenAI first with 30 second timeout
         const gptResponse = await Promise.race([
@@ -646,7 +652,7 @@ async function seoUpdateWebsiteFunc(instruction, existingCode, url) {
                     temperature: 0.7
                 })
             }),
-            new Promise((_, reject) => 
+            new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('OpenAI timeout')), 30000)
             )
         ]);
@@ -663,7 +669,7 @@ async function seoUpdateWebsiteFunc(instruction, existingCode, url) {
 
     } catch (error) {
         console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-        
+
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -706,7 +712,12 @@ async function seoUpdateWebsiteFunc(instruction, existingCode, url) {
 
 async function seoArticles(req, res) {
     try {
-        const { instruction } = req.body;
+        const { instruction, userId } = req.body;
+
+        var checkSub = await checkSubscription(userId)
+        if (!checkSub) {
+            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        }
         const result = await seoArticlesFunc(instruction);
         return res.status(200).json(result);
     } catch (error) {
@@ -717,7 +728,12 @@ async function seoArticles(req, res) {
 
 async function seoWebsites(req, res) {
     try {
-        const { instruction } = req.body;
+        const { instruction, userId } = req.body;
+
+        var checkSub = await checkSubscription(userId)
+        if (!checkSub) {
+            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        }
         const result = await seoWebsiteFunc(instruction);
         return res.status(200).json(result);
     } catch (error) {
@@ -729,8 +745,14 @@ async function seoWebsites(req, res) {
 
 async function updateSeoWebsites(req, res) {
     try {
-        const { instruction, existingCode, url } = req.body;
-        const result = await seoUpdateWebsiteFunc(instruction,existingCode,url);
+        const { instruction, existingCode, url, userId } = req.body;
+
+
+        var checkSub = await checkSubscription(userId)
+        if (!checkSub) {
+            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        }
+        const result = await seoUpdateWebsiteFunc(instruction, existingCode, url);
         return res.status(200).json(result);
     } catch (error) {
         console.log(error);
@@ -738,4 +760,4 @@ async function updateSeoWebsites(req, res) {
     }
 }
 
-module.exports = { seoAgent, seoArticles, seoWebsites,updateSeoWebsites };
+module.exports = { seoAgent, seoArticles, seoWebsites, updateSeoWebsites };
