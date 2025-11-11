@@ -1,17 +1,31 @@
 const dotenv = require("dotenv")
 const path = require("path");
 const { checkSubscription } = require("./paymentController");
+const { getLast10Messages, insertMessage } = require("../memory");
 
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
-async function motherAI(question) {
+
+async function motherAI(question, userId) {
+    
+    
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
-    const prompt = "You are a helpful AI assistant. Provide clear, accurate, and concise responses.";
+    const systemPrompt = "You are a helpful AI assistant. Provide clear, accurate, and concise responses.";
+
+    // Get conversation history from your database
+    const history = await getLast10Messages(userId); // Your database function
 
     try {
+        // Build OpenAI messages with history
+        const openaiMessages = [
+            { role: "system", content: systemPrompt },
+            ...history,
+            { role: "user", content: question }
+        ];
+
         // Try OpenAI first with 30 second timeout
         const gptResponse = await Promise.race([
             fetch("https://api.openai.com/v1/chat/completions", {
@@ -22,16 +36,7 @@ async function motherAI(question) {
                 },
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
-                    messages: [
-                        {
-                            role: "system",
-                            content: prompt
-                        },
-                        {
-                            role: "user",
-                            content: question
-                        }
-                    ],
+                    messages: openaiMessages,
                     temperature: 0.7
                 })
             }),
@@ -44,6 +49,10 @@ async function motherAI(question) {
 
         if (gptResponse.ok) {
             const answer = data.choices[0].message.content;
+            
+         await insertMessage("assistant", answer, userId)
+            
+            
             return answer;
         } else {
             console.error("OpenAI API Error:", data);
@@ -51,12 +60,17 @@ async function motherAI(question) {
         }
 
     } catch (error) {
-        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+    
 
         // Fallback to Claude API
         try {
-            console.log("calling Claude..");
+         
 
+            // Build Claude messages with history
+            const claudeMessages = [
+                ...history,
+                { role: "user", content: question }
+            ];
 
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
                 method: "POST",
@@ -68,13 +82,8 @@ async function motherAI(question) {
                 body: JSON.stringify({
                     model: "claude-sonnet-4-20250514",
                     max_tokens: 4096,
-                    system: prompt,
-                    messages: [
-                        {
-                            role: "user",
-                            content: question
-                        }
-                    ],
+                    system: systemPrompt,
+                    messages: claudeMessages,
                     temperature: 0.7
                 })
             });
@@ -87,6 +96,9 @@ async function motherAI(question) {
             }
 
             const answer = claudeData.content[0].text;
+            
+            await insertMessage("assistant", answer, userId)
+            
             return answer;
 
         } catch (claudeError) {
@@ -98,17 +110,20 @@ async function motherAI(question) {
 
 
 
+
+
 async function motherAIExample(req, res) {
     try {
         const { instruction, userId } = req.body
 
-
+        await insertMessage("user", instruction, userId)
         var checkSub = await checkSubscription(userId)
         if (!checkSub) {
             return res.status(400).json({ error: "Kindly Check your Subscription" });
         }
-
-        const response = await motherAI(instruction)
+     
+        
+        const response = await motherAI(instruction, userId)
 
         return res.status(200).json({ response })
     } catch (error) {

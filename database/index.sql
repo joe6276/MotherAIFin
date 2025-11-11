@@ -57,3 +57,13 @@ ADD PasswordResetToken NVARCHAR(500) NULL,
     PasswordResetExpires DATETIME NULL;
 
 DROP TABLE Subscriptions
+
+
+CREATE TABLE Messages (
+    id INT IDENTITY(1,1) PRIMARY KEY,                
+    content NVARCHAR(MAX),            
+    role NVARCHAR(50),                 
+    userId INT                         
+);
+
+DROP TABLE Messages
