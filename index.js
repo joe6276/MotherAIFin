@@ -16,6 +16,7 @@ const { convoRouter } = require("./routes/conversationRoutes")
 const { automationRouter } = require("./routes/automationRouter")
 const { googleRouter } = require("./routes/googleRoutes")
 const { paymentRouter } = require("./routes/paymentRouter")
+const { scrapperRouter } = require("./routes/scrapperRoutes")
 dotenv.config()
 
 
@@ -45,7 +46,7 @@ app.use("/convo", convoRouter)
 app.use("/automation", automationRouter)
 app.use("/auth", googleRouter)
 app.use("/payment", paymentRouter)
-
+app.use("/scrap", scrapperRouter)
 
 app.get("/test", (req,res)=>{
     res.status(200).send("<h1> Hello Again Changes!!!! </h1>")

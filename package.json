@@ -28,6 +28,7 @@
     "nodemailer": "^7.0.10",
     "nodemon": "^3.1.10",
     "openai": "^6.6.0",
+    "puppeteer": "^24.29.1",
     "stripe": "^19.3.0",
     "uuid": "^13.0.0"
   }
