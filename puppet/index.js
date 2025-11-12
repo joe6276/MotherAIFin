@@ -1,56 +1,66 @@
-const puppeteer = require("puppeteer")
+const puppeteer = require("puppeteer");
+
+// Check if we're in a serverless/Linux production environment
+const isProduction = process.env.NODE_ENV === 'production';
+const isLinux = process.platform === 'linux';
 
 async function scrapeURL(url) {
     let browser;
 
     try {
-        browser = await puppeteer.launch({
+        const launchOptions = {
             headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu'
+            ]
+        };
 
-        const page = await browser.newPage()
+        // Only use chromium for Linux production environments
+        if (isProduction && isLinux) {
+            const chromium = require("@sparticuz/chromium");
+            launchOptions.args = chromium.args;
+            launchOptions.defaultViewport = chromium.defaultViewport;
+            launchOptions.executablePath = await chromium.executablePath();
+            launchOptions.headless = chromium.headless;
+        }
 
+        browser = await puppeteer.launch(launchOptions);
+
+        const page = await browser.newPage();
+        
         await page.setUserAgent(
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         );
+        
         console.log(`Navigating to ${url}...`);
 
         await page.goto(url, {
             waitUntil: 'networkidle2',
             timeout: 60000
-        })
+        });
 
-        // Wait for content to load (adjust selector as needed)
         await page.waitForSelector('body');
 
         const data = await page.evaluate(() => {
-            // You can customize what to extract here
             return {
                 title: document.title,
                 url: window.location.href,
-
-                // Get all headings
                 headings: Array.from(document.querySelectorAll('h1, h2, h3')).map(h => ({
                     tag: h.tagName,
                     text: h.textContent.trim()
                 })),
-
-                // Get all links
                 links: Array.from(document.querySelectorAll('a')).map(a => ({
                     text: a.textContent.trim(),
                     href: a.href
                 })).filter(link => link.href && link.text),
-
-                // Get all paragraphs
                 paragraphs: Array.from(document.querySelectorAll('p')).map(p =>
                     p.textContent.trim()
                 ).filter(text => text.length > 0),
-
-                // Get meta description
                 metaDescription: document.querySelector('meta[name="description"]')?.content || '',
-
-                // Get all images
                 images: Array.from(document.querySelectorAll('img')).map(img => ({
                     src: img.src,
                     alt: img.alt
@@ -65,13 +75,14 @@ async function scrapeURL(url) {
         console.error('Scraping failed:', error.message);
         throw error;
     } finally {
-        // Always close browser
         if (browser) {
             await browser.close();
         }
     }
 }
 
+
+module.exports = { scrapeURL };
 async function scrapeAllPages(startUrl, options = {}) {
   const {
     maxPages = 10,           // Maximum number of pages to scrape
