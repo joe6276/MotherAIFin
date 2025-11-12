@@ -1,31 +1,40 @@
-const puppeteer = require("puppeteer");
-
-// Check if we're in a serverless/Linux production environment
+// Determine which setup to use
 const isProduction = process.env.NODE_ENV === 'production';
 const isLinux = process.platform === 'linux';
+
+let puppeteer, chromium;
+
+if (isProduction && isLinux) {
+    // Use puppeteer-core with @sparticuz/chromium in production
+    puppeteer = require("puppeteer-core");
+    chromium = require("@sparticuz/chromium");
+} else {
+    // Use regular puppeteer in development
+    puppeteer = require("puppeteer");
+}
 
 async function scrapeURL(url) {
     let browser;
 
     try {
-        const launchOptions = {
+        let launchOptions = {
             headless: 'new',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
                 '--disable-gpu'
             ]
         };
 
-        // Only use chromium for Linux production environments
-        if (isProduction && isLinux) {
-            const chromium = require("@sparticuz/chromium");
-            launchOptions.args = chromium.args;
-            launchOptions.defaultViewport = chromium.defaultViewport;
-            launchOptions.executablePath = await chromium.executablePath();
-            launchOptions.headless = chromium.headless;
+        // Production Linux: use chromium binary
+        if (isProduction && isLinux && chromium) {
+            launchOptions = {
+                args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+            };
         }
 
         browser = await puppeteer.launch(launchOptions);
@@ -80,6 +89,7 @@ async function scrapeURL(url) {
         }
     }
 }
+
 
 
 module.exports = { scrapeURL };
