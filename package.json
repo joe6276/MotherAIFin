@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "postinstall": "npx puppeteer browsers install chrome",
-    "start": "node index.js",
+  "postinstall": "echo 'Running postinstall...' && npx puppeteer browsers install chrome && echo 'Chrome installation complete' && ls -la /root/.cache/puppeteer || echo 'Cache directory not found'",
+      "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
