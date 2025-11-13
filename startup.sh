@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e  # Exit on error
 
+echo "==== Installing npm dependencies ===="
+npm install
+
 echo "==== Installing system dependencies ===="
 apt-get update
 apt-get install -y \
