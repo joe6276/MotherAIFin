@@ -99,6 +99,13 @@ async function updateStripeSessionId(stripeSessionId, email) {
 }
 
 
+function getDatePlus30() {
+    const date = new Date();
+    date.setDate(date.getDate() + 30);
+
+    return date.toISOString().replace("T", " ").replace("Z", "");
+}
+
 
 async function updatePaymentIntent(stripeSessionId, paymentIntentId) {
     try {
@@ -106,9 +113,10 @@ async function updatePaymentIntent(stripeSessionId, paymentIntentId) {
         await pool.request()
             .input('StripeSessionId', sql.NVarChar, stripeSessionId)
             .input('PaymentIntentId', sql.NVarChar, paymentIntentId)
+            .input('ExpiryDate', sql.DateTime, getDatePlus30())
             .query(`
     UPDATE Subscriptions
-    SET PaymentIntentId = @PaymentIntentId
+    SET PaymentIntentId = @PaymentIntentId, ExpiryDate=@ExpiryDate
     WHERE StripeSessionId = @StripeSessionId
   `);
     } catch (error) {
