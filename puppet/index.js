@@ -1,39 +1,49 @@
-// Determine which setup to use
+
+const path = require('path')
+const dotenv = require("dotenv")
+dotenv.config({path:path.resolve(__dirname, "../.env")})
+
 const isProduction = process.env.NODE_ENV === 'production';
-const isLinux = process.platform === 'linux';
 
 let puppeteer, chromium;
 
-if (isProduction && isLinux) {
-    // Use puppeteer-core with @sparticuz/chromium in production
-    puppeteer = require("puppeteer-core");
-    chromium = require("@sparticuz/chromium");
+if (isProduction) {
+    puppeteer = require('puppeteer-core');
+    chromium = require('chrome-aws-lambda');
 } else {
-    // Use regular puppeteer in development
-    puppeteer = require("puppeteer");
+    puppeteer = require('puppeteer'); // Regular puppeteer for dev
 }
 
 async function scrapeURL(url) {
     let browser;
 
     try {
-        let launchOptions = {
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu'
-            ]
-        };
+        let launchOptions;
 
-        // Production Linux: use chromium binary
-        if (isProduction && isLinux && chromium) {
+        if (isProduction) {
+            // Production: use chrome-aws-lambda
             launchOptions = {
-                args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+                args: [
+                    ...chromium.args,
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu'
+                ],
                 defaultViewport: chromium.defaultViewport,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
+            };
+        } else {
+            // Development: use bundled Chromium
+            launchOptions = {
+                headless: 'new',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu'
+                ]
             };
         }
 
@@ -42,7 +52,7 @@ async function scrapeURL(url) {
         const page = await browser.newPage();
         
         await page.setUserAgent(
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         );
         
         console.log(`Navigating to ${url}...`);
@@ -89,8 +99,6 @@ async function scrapeURL(url) {
         }
     }
 }
-
-
 
 module.exports = { scrapeURL };
 async function scrapeAllPages(startUrl, options = {}) {

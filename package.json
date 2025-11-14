@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-  "postinstall": "echo 'Running postinstall...' && npx puppeteer browsers install chrome && echo 'Chrome installation complete' && ls -la /root/.cache/puppeteer || echo 'Cache directory not found'",
-      "start": "node index.js",
+    "postinstall": "echo 'Running postinstall...' && npx puppeteer browsers install chrome && echo 'Chrome installation complete' && ls -la /root/.cache/puppeteer || echo 'Cache directory not found'",
+    "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
@@ -15,7 +15,7 @@
     "@anthropic-ai/sdk": "^0.68.0",
     "@azure/storage-blob": "^12.29.1",
     "@google/genai": "^1.27.0",
- "@sparticuz/chromium": "^123.0.0",
+    "@sparticuz/chromium": "^123.0.0",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "cheerio": "^1.1.2",
@@ -30,8 +30,9 @@
     "nodemailer": "^7.0.10",
     "nodemon": "^3.1.10",
     "openai": "^6.6.0",
-   "puppeteer": "^21.0.0",
-    "puppeteer-core": "^21.0.0",
+    "puppeteer": "^24.30.0",
+    "puppeteer-core": "10.4.0",
+    "chrome-aws-lambda": "10.1.0",
     "stripe": "^19.3.0",
     "uuid": "^13.0.0"
   }
