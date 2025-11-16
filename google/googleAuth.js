@@ -157,10 +157,10 @@ async function getCallback(req, res) {
         console.log('User logged in:', userInfo.data.email);
 
         // Redirect back to frontend
-        res.redirect('http://localhost:80?auth=success');
+        res.redirect('https://mother-ai-ui.vercel.app/drive?auth=success');
     } catch (error) {
         console.error('Error in OAuth callback:', error);
-        res.redirect('http://localhost:80?auth=error');
+        res.redirect('https://mother-ai-ui.vercel.app/drive?auth=fail');
     }
 }
 
