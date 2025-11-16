@@ -1,4 +1,5 @@
-const  OpenAI = require("openai")
+const OpenAI = require("openai");
+const fs = require("fs");
 const dotenv = require("dotenv")
 const path = require("path");
 dotenv.config({path:path.resolve(__dirname, "../.env")})
@@ -40,9 +41,6 @@ const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STR
 }
 
 
-// generateAndUploadImage("a futuristic African city skyline at sunset, cyberpunk style")
-//   .then(url => console.log("🌆 Image URL:", url))
-//   .catch(err => console.error("❌ Error:", err));
 
 async function uploadAnImage(req,res){
     try {
@@ -61,5 +59,28 @@ async function uploadAnImage(req,res){
     }
 }
 
+
+
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// async function generateImage() {
+//   const result = await openai.images.generate({
+//     model: "gpt-image-1",
+//     prompt: "A futuristic African city at sunset with flying cars",
+//     size: "1024x1024"
+//   });
+
+//   // Get Base64 image
+//   const image_base64 = result.data[0].b64_json;
+
+//   // Save to file
+//   const buffer = Buffer.from(image_base64, "base64");
+//   fs.writeFileSync("image.png", buffer);
+
+//   console.log("Image saved as image.png");
+// }
+
+// generateImage();
 
 module.exports={uploadAnImage}
