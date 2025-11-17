@@ -7,35 +7,10 @@ const Anthropic = require("@anthropic-ai/sdk");
 const {  generateAndUploadImage } = require("./imageController");
 const { searchForURL } = require("./scrap");
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
-const {tavily} = require("@tavily/core");
+
 const { DateTime } = require("mssql");
 
-const clienttav = tavily({apiKey: process.env.TAVILY_API_KEY })
 
-
-async function askTavily(question,topic = "general", maxResults = 5){
-    try {
-      const res = await clienttav.search(question +"Todays date is "+DateTime.now()
-  , {
-      topic,
-      max_results: maxResults,
-      include_answer: true,
-    });
-
-
-        if(res.answer){
-            return `${res.answer}`
-        }
-        let formatted = `🔎 Search results for "${question}":\n\n`;
-    res.results.forEach((r, i) => {
-      formatted += `${i + 1}. ${r.title}\n${r.content}\n\n`;
-    });
-
-    return formatted.trim();
-    } catch (err) {
-         return `⚠ Tavily search failed: ${err.message}`;
-    }
-}
 
 async function chooseAgentsFunc(instruction) {
     const openaiKey = process.env.OPENAI_API_KEY;
@@ -996,20 +971,7 @@ registerTool(
     }
 )
 
-registerTool(
-    'askTavily',
-    async (args) => {
-        return await askTavily(args.question)
-    },
-    "Search the internet for up-to-date information, news, or factual queries",
-    {
-        type: "object",
-        properties: {
-            question: { type: "string", description: "The question to be asked" }
-        },
-        required: ["question"]
-    }
-)
+
 
 
 registerTool(
