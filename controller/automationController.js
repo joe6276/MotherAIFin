@@ -5,9 +5,37 @@ const { checkSubscription } = require("./paymentController");
 const OpenAI = require("openai")
 const Anthropic = require("@anthropic-ai/sdk");
 const {  generateAndUploadImage } = require("./imageController");
-const { searchForURL } = require("./scrap");
+const { searchForURL, scrapeContacts } = require("./scrap");
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
+const {tavily} = require("@tavily/core");
+const { DateTime } = require("mssql");
 
+const clienttav = tavily({apiKey: process.env.TAVILY_API_KEY })
+
+
+async function askTavily(question,topic = "general", maxResults = 5){
+    try {
+      const res = await clienttav.search(question +"Todays date is "+DateTime.now()
+  , {
+      topic,
+      max_results: maxResults,
+      include_answer: true,
+    });
+
+
+        if(res.answer){
+            return `${res.answer}`
+        }
+        let formatted = `🔎 Search results for "${question}":\n\n`;
+    res.results.forEach((r, i) => {
+      formatted += `${i + 1}. ${r.title}\n${r.content}\n\n`;
+    });
+
+    return formatted.trim();
+    } catch (err) {
+         return `⚠ Tavily search failed: ${err.message}`;
+    }
+}
 
 async function chooseAgentsFunc(instruction) {
     const openaiKey = process.env.OPENAI_API_KEY;
@@ -23,6 +51,7 @@ async function chooseAgentsFunc(instruction) {
         "copyWriting": "This agent crafts engaging and persuasive written content, including scripts, articles, and marketing copy.",
         "video": "This agent produces high-quality video content for promotions, tutorials, and storytelling.",
         "motherAI": "This is a general agent that can answer any question that the above agents cant answer"
+
         }
     
     Based on the instruction: "${instruction}", respond with a comma-separated list of the appropriate agent names.
@@ -443,10 +472,54 @@ ${output.css}
     return String(output);
 }
 
+async function webSearch(query) {
+    try {
+        const response = await fetch("https://api.tavily.com/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                api_key: process.env.TAVILY_API_KEY,
+                query,
+                max_results: 5
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error("Tavily Error:", data);
+            return "Web search failed.";
+        }
+
+        return data.results
+            .map(r => `- ${r.title}: ${r.url}\n  ${r.content}`)
+            .join("\n\n");
+
+    } catch (err) {
+        console.error("Web search error:", err);
+        return "Web search failed.";
+    }
+}
+
+
 async function motherAI(instruction) {
     const openaiKey = process.env.OPENAI_API_KEY;
     const claudeKey = process.env.ANTHROPIC_API_KEY;
-    const prompt = "You are a helpful AI assistant. Provide clear, accurate, and concise responses.";
+
+    // Run web search first
+    const searchResults = await webSearch(instruction);
+
+    const prompt = `
+You are a helpful AI assistant. 
+Provide clear, accurate, concise responses.
+
+You also have access to live web search.
+Here are the search results relevant to the query:
+
+${searchResults}
+
+Always include information from the search results when useful.
+`;
 
     try {
         // Try OpenAI first with 30 second timeout
@@ -460,14 +533,8 @@ async function motherAI(instruction) {
                 body: JSON.stringify({
                     model: "gpt-4o",
                     messages: [
-                        {
-                            role: "system",
-                            content: prompt
-                        },
-                        {
-                            role: "user",
-                            content: instruction
-                        }
+                        { role: "system", content: prompt },
+                        { role: "user", content: instruction }
                     ],
                     temperature: 0.7
                 })
@@ -480,8 +547,7 @@ async function motherAI(instruction) {
         const data = await gptResponse.json();
 
         if (gptResponse.ok) {
-            const answer = data.choices[0].message.content;
-            return answer;
+            return data.choices[0].message.content;
         } else {
             console.error("OpenAI API Error:", data);
             throw new Error("OpenAI API failed");
@@ -492,9 +558,6 @@ async function motherAI(instruction) {
 
         // Fallback to Claude API
         try {
-            console.log("calling Claude..");
-
-
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
                 method: "POST",
                 headers: {
@@ -507,10 +570,7 @@ async function motherAI(instruction) {
                     max_tokens: 4096,
                     system: prompt,
                     messages: [
-                        {
-                            role: "user",
-                            content: instruction
-                        }
+                        { role: "user", content: instruction }
                     ],
                     temperature: 0.7
                 })
@@ -523,15 +583,15 @@ async function motherAI(instruction) {
                 throw new Error("Claude API failed");
             }
 
-            const answer = claudeData.content[0].text;
-            return answer;
+            return claudeData.content[0].text;
 
         } catch (claudeError) {
-            console.error("Claude API Error:", claudeError);
+            console.error("Claude Error:", claudeError);
             throw claudeError;
         }
     }
 }
+
 
 async function copyWritingFunc(instruction) {
     const openaiKey = process.env.OPENAI_API_KEY;
@@ -864,7 +924,9 @@ function listTools() {
             "copywriting": "Creates persuasive marketing copy, blog posts, product descriptions, email campaigns, and ad content.",
             "motherAI": "Handles general queries, research, analysis, and tasks outside the scope of specialized agents.",
             "image":"This tool generates omages given a prompt",
-            "crawler":"This is an tool takes a search query and finds 8-10 business website URLs (like company pages, classified ads, and marketplace listings) for business research purposes."
+            "crawler":"This is an tool takes a search query and finds 8-10 business website URLs (like company pages, classified ads, and marketplace listings) for business research purposes.",
+            "contacts":"This tool given URls will search over the internet to get the businesses contacts like phone Number, Email and any address"  ,
+            "motherAI":"Search the internet for up-to-date information, news, or factual queries",
         }
     ]
 
@@ -935,6 +997,44 @@ registerTool(
         required: ["instruction"]
     }
 )
+
+registerTool(
+    'askTavily',
+    async (args) => {
+        return await askTavily(args.question)
+    },
+    "Search the internet for up-to-date information, news, or factual queries",
+    {
+        type: "object",
+        properties: {
+            question: { type: "string", description: "The question to be asked" }
+        },
+        required: ["question"]
+    }
+)
+registerTool(
+    "contact",
+    async (args) => {
+        return await scrapeContacts(args.urls);
+    },
+    "Extracts business contact information (phone numbers, email addresses, and physical addresses) from provided URLs by scraping the web pages. Use this when you need to find contact details for businesses or organizations from their websites.",
+    {
+        type: "object",
+        properties: {
+            urls: {
+                type: "array",
+                description: "Array of website URLs to scrape for contact information. Each URL should be a valid web address (e.g., 'https://example.com/contact')",
+                items: {
+                    type: "string",
+                    format: "uri"
+                },
+                minItems: 1
+            }
+        },
+        required: ["urls"]
+    }
+);
+
 registerTool(
     "crawler",
     async (args) => {
@@ -1057,7 +1157,8 @@ CRITICAL INSTRUCTIONS:
    - Website + Copywriting + SEO: Full-service web solutions
    - image:This tool generates omages given a prompt
    - crawler:This is an tool takes a search query and finds 8-10 business website URLs (like company pages, classified ads, and marketplace listings) for business research purposes.
-        
+   - contacts:This tool given URls will search over the internet to get the businesses contacts like phone Number, Email and any address
+   - motherAI: Search the internet for up-to-date information, news, or factual queries
 
 TOOL USAGE PATTERNS:
 - **"Build a website"** → Use 'website' tool AND 'seo' tool (websites should always be SEO-friendly)
@@ -1145,6 +1246,12 @@ Remember: Your goal is to deliver exceptional, comprehensive solutions by intell
                             }
                         } else if (toolName === 'seo' && toolResult) {
                             results.artifacts.seo = {
+                                data: toolResult,
+                                generatedAt: new Date().toISOString()
+                            }
+                        }
+                       else if (toolName === 'contact' && toolResult) {
+                            results.artifacts.contact = {
                                 data: toolResult,
                                 generatedAt: new Date().toISOString()
                             }

@@ -310,7 +310,18 @@ Return JSON only:
 // async function run() {
 //     try {
 //         console.log("=== Step 1: Searching for URLs ===");
-//             const urls = await searchForURL("Mark X ");
+//             const urls =  [
+//                         "https://jiji.co.ke/cars/toyota-mark-x",
+//                         "https://autochek.africa/ke/cars-for-sale/toyota/mark-x",
+//                         "https://www.cars45.co.ke/listing/toyota/mark_x",
+//                         "https://crotonmotors.com/toyota/mark-x/",
+//                         "https://motors.digger.co.ke/for-sale/toyota/mark-x",
+//                         "https://www.pigiame.co.ke/cars/toyota/mark-x/m",
+//                         "https://www.autoskenya.com/buy-car-Toyota-Mark%20X?page=2",
+//                         "https://jiji.co.ke/nairobi/cars/toyota-mark-x",
+//                         "https://cars.trovit.co.ke/used-cars/toyota-mark-x",
+//                         "https://jiji.co.ke/cars/toyota-mark"
+//                     ]
 
 //             console.log("\n=== Found URLs ===");
 //             console.log(JSON.stringify(urls, null, 2));
@@ -321,20 +332,20 @@ Return JSON only:
 //         // Scrape up to 10 URLs
 //         const urlsToScrape = urls.slice(0, 10);
 
-        // for (const url of urlsToScrape) {
-        //     const contacts = await scrapeContacts(url);
+//         for (const url of urlsToScrape) {
+//             const contacts = await scrapeContacts(url);
 
-        //     // Only add if we found contact info
-        //     if (contacts.emails.length > 0 || contacts.phones.length > 0) {
-        //         allContacts.push(contacts);
-        //         console.log(`✓ Found contacts: ${contacts.phones.length} phones, ${contacts.emails.length} emails`);
-        //     } else {
-        //         console.log(`✗ No contacts found`);
-        //     }
+//             // Only add if we found contact info
+//             if (contacts.emails.length > 0 || contacts.phones.length > 0) {
+//                 allContacts.push(contacts);
+//                 console.log(`✓ Found contacts: ${contacts.phones.length} phones, ${contacts.emails.length} emails`);
+//             } else {
+//                 console.log(`✗ No contacts found`);
+//             }
 
-        //     // Add delay to avoid rate limiting
-        //     await new Promise(resolve => setTimeout(resolve, 1500));
-        // }
+//             // Add delay to avoid rate limiting
+//             await new Promise(resolve => setTimeout(resolve, 1500));
+//         }
 
 //         console.log("\n=== Final Results ===");
 //         console.log(`Total URLs scraped: ${urlsToScrape.length}`);
