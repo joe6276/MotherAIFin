@@ -5,7 +5,7 @@ const { checkSubscription } = require("./paymentController");
 const OpenAI = require("openai")
 const Anthropic = require("@anthropic-ai/sdk");
 const {  generateAndUploadImage } = require("./imageController");
-const { searchForURL, scrapeContacts } = require("./scrap");
+const { searchForURL } = require("./scrap");
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 const {tavily} = require("@tavily/core");
 const { DateTime } = require("mssql");
@@ -925,7 +925,6 @@ function listTools() {
             "motherAI": "Handles general queries, research, analysis, and tasks outside the scope of specialized agents.",
             "image":"This tool generates omages given a prompt",
             "crawler":"This is an tool takes a search query and finds 8-10 business website URLs (like company pages, classified ads, and marketplace listings) for business research purposes.",
-            "contacts":"This tool given URls will search over the internet to get the businesses contacts like phone Number, Email and any address"  ,
             "motherAI":"Search the internet for up-to-date information, news, or factual queries",
         }
     ]
@@ -1012,28 +1011,7 @@ registerTool(
         required: ["question"]
     }
 )
-registerTool(
-    "contact",
-    async (args) => {
-        return await scrapeContacts(args.urls);
-    },
-    "Extracts business contact information (phone numbers, email addresses, and physical addresses) from provided URLs by scraping the web pages. Use this when you need to find contact details for businesses or organizations from their websites.",
-    {
-        type: "object",
-        properties: {
-            urls: {
-                type: "array",
-                description: "Array of website URLs to scrape for contact information. Each URL should be a valid web address (e.g., 'https://example.com/contact')",
-                items: {
-                    type: "string",
-                    format: "uri"
-                },
-                minItems: 1
-            }
-        },
-        required: ["urls"]
-    }
-);
+
 
 registerTool(
     "crawler",
@@ -1157,7 +1135,6 @@ CRITICAL INSTRUCTIONS:
    - Website + Copywriting + SEO: Full-service web solutions
    - image:This tool generates omages given a prompt
    - crawler:This is an tool takes a search query and finds 8-10 business website URLs (like company pages, classified ads, and marketplace listings) for business research purposes.
-   - contacts:This tool given URls will search over the internet to get the businesses contacts like phone Number, Email and any address
    - motherAI: Search the internet for up-to-date information, news, or factual queries
 
 TOOL USAGE PATTERNS:
@@ -1250,12 +1227,7 @@ Remember: Your goal is to deliver exceptional, comprehensive solutions by intell
                                 generatedAt: new Date().toISOString()
                             }
                         }
-                       else if (toolName === 'contact' && toolResult) {
-                            results.artifacts.contact = {
-                                data: toolResult,
-                                generatedAt: new Date().toISOString()
-                            }
-                        } else if (toolName === 'crawler' && toolResult) {
+                        else if (toolName === 'crawler' && toolResult) {
                             results.artifacts.crawler = {
                                 data: toolResult,
                                 generatedAt: new Date().toISOString()
