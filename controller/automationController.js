@@ -4,7 +4,8 @@ const { SEO_WEBSITE_PROMPT } = require("../data/seoResult");
 const { checkSubscription } = require("./paymentController");
 const OpenAI = require("openai")
 const Anthropic = require("@anthropic-ai/sdk");
-const { uploadAnImage, generateAndUploadImage } = require("./imageController");
+const {  generateAndUploadImage } = require("./imageController");
+const { searchForURL } = require("./scrap");
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
@@ -863,7 +864,7 @@ function listTools() {
             "copywriting": "Creates persuasive marketing copy, blog posts, product descriptions, email campaigns, and ad content.",
             "motherAI": "Handles general queries, research, analysis, and tasks outside the scope of specialized agents.",
             "image":"This tool generates omages given a prompt",
-            "crawler":""
+            "crawler":"This is an tool takes a search query and finds 8-10 business website URLs (like company pages, classified ads, and marketplace listings) for business research purposes."
         }
     ]
 
@@ -934,7 +935,23 @@ registerTool(
         required: ["instruction"]
     }
 )
-
+registerTool(
+    "crawler",
+    async (args) => {
+        return await searchForURL(args.instruction)
+    },
+    "Searches the web and returns 8-10 URLs of relevant business websites, company pages, classified ads, and commercial marketplace listings based on the search query. Use this when you need to find multiple business-related web pages for research or analysis.",
+    {
+        type: "object",
+        properties: {
+            instruction: {
+                type: "string",
+                description: "The search query describing what type of businesses, products, or services to find (e.g., 'solar panel installers in California', 'used car dealerships', 'freelance graphic designers')"
+            }
+        },
+        required: ["instruction"]
+    }
+)
 registerTool(
     "website",
     async (args) => {
@@ -1038,7 +1055,9 @@ CRITICAL INSTRUCTIONS:
    - Website + SEO: Always optimize websites for search engines
    - Copywriting + SEO: Make copy both persuasive and search-friendly
    - Website + Copywriting + SEO: Full-service web solutions
-   - MotherAI: Use for research, strategy, or questions before creating content
+   - image:This tool generates omages given a prompt
+   - crawler:This is an tool takes a search query and finds 8-10 business website URLs (like company pages, classified ads, and marketplace listings) for business research purposes.
+        
 
 TOOL USAGE PATTERNS:
 - **"Build a website"** → Use 'website' tool AND 'seo' tool (websites should always be SEO-friendly)
@@ -1046,7 +1065,6 @@ TOOL USAGE PATTERNS:
 - **"Write product description"** → Use 'copywriting' + 'seo' (descriptions should rank well)
 - **"Marketing campaign"** → Use 'copywriting' + 'seo' + possibly 'motherAI' for strategy
 - **"Online store"** → Use 'website' + 'copywriting' + 'seo' (comprehensive solution)
-- **General questions/research** → Use 'motherAI' first, then specialized tools as needed
 
 WORKFLOW APPROACH:
 1. If the request involves creating web content → plan to use website, copywriting, and SEO tools
@@ -1130,7 +1148,12 @@ Remember: Your goal is to deliver exceptional, comprehensive solutions by intell
                                 data: toolResult,
                                 generatedAt: new Date().toISOString()
                             }
-                        } else if (toolName === 'copywriting' && toolResult) {
+                        } else if (toolName === 'crawler' && toolResult) {
+                            results.artifacts.crawler = {
+                                data: toolResult,
+                                generatedAt: new Date().toISOString()
+                            }
+                        }else if (toolName === 'copywriting' && toolResult) {
                             results.artifacts.copywriting = {
                                 content: toolResult,
                                 generatedAt: new Date().toISOString()
