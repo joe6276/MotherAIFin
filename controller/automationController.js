@@ -4,6 +4,7 @@ const { SEO_WEBSITE_PROMPT } = require("../data/seoResult");
 const { checkSubscription } = require("./paymentController");
 const OpenAI = require("openai")
 const Anthropic = require("@anthropic-ai/sdk");
+const { uploadAnImage, generateAndUploadImage } = require("./imageController");
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
@@ -860,7 +861,9 @@ function listTools() {
             "website": "Designs and develops complete, production-ready HTML/CSS/JS websites with modern, responsive layouts.",
             "seo": "Analyzes and optimizes website content, meta tags, structure, and keywords for search engine ranking.",
             "copywriting": "Creates persuasive marketing copy, blog posts, product descriptions, email campaigns, and ad content.",
-            "motherAI": "Handles general queries, research, analysis, and tasks outside the scope of specialized agents."
+            "motherAI": "Handles general queries, research, analysis, and tasks outside the scope of specialized agents.",
+            "image":"This tool generates omages given a prompt",
+            "crawler":""
         }
     ]
 
@@ -944,6 +947,24 @@ registerTool(
             instruction: {
                 type: "string",
                 description: "Comprehensive website specification including: purpose, target audience, required pages/sections, design preferences (colors, style, layout), features (forms, galleries, navigation), responsiveness requirements, and any specific functionality needed"
+            }
+        },
+        required: ["instruction"]
+    }
+)
+
+registerTool(
+    "image",
+    async (args) => {
+        return await generateAndUploadImage(args.instruction)
+    },
+    "Generates an Image given a n Instruction and returns the URl",
+    {
+        type: "object",
+        properties: {
+            instruction: {
+                type: "string",
+                description: "The description of the Image you should generate"
             }
         },
         required: ["instruction"]
@@ -1114,7 +1135,14 @@ Remember: Your goal is to deliver exceptional, comprehensive solutions by intell
                                 content: toolResult,
                                 generatedAt: new Date().toISOString()
                             }
-                        } else if (toolName === 'motherAI' && toolResult) {
+                            
+                        }
+                        else if (toolName === 'image' && toolResult) {
+                            results.artifacts.image = {
+                                content: toolResult,
+                                generatedAt: new Date().toISOString()
+                            }
+                         } else if (toolName === 'motherAI' && toolResult) {
                             results.artifacts.motherAI = {
                                 response: toolResult,
                                 generatedAt: new Date().toISOString()

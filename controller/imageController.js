@@ -83,4 +83,4 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // generateImage();
 
-module.exports={uploadAnImage}
+module.exports={uploadAnImage,generateAndUploadImage}
