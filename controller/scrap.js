@@ -51,7 +51,7 @@ async function searchForURL(query) {
 
         const searchData = await searchResponse.json();
 
-        console.log("Full API Response:", JSON.stringify(searchData, null, 2));
+ 
 
         let urlList = [];
         const textContent = searchData.content
@@ -59,20 +59,19 @@ async function searchForURL(query) {
             .map(item => item.text)
             .join("\n");
 
-        console.log("Extracted Text:", textContent);
 
         try {
             const cleanJson = textContent.replace(/```json\n?|\n?```/g, '').trim();
             urlList = JSON.parse(cleanJson);
         } catch (e) {
-            console.log("JSON parsing failed, extracting URLs manually");
+         
             const urlRegex = /https?:\/\/[^\s"'\]]+/g;
             urlList = [...new Set(textContent.match(urlRegex) || [])];
         }
 
         // If still no URLs, try direct web search approach
         if (urlList.length === 0) {
-            console.log("No URLs from Claude, trying alternative approach...");
+          
             
             // Use web search tool directly in a second request
             const directSearchResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -113,11 +112,11 @@ async function searchForURL(query) {
         }
 
         if (urlList.length === 0) {
-            console.log('Claude returned no URLs. Using manual marketplace URLs...');
+          
             urlList = await getManualURLs(query);
         }
 
-        console.log(`Found ${urlList.length} URLs to scrape`);
+       
         return urlList;
 
     } catch (error) {
@@ -138,7 +137,7 @@ async function waitForRateLimit() {
     // If we've made multiple requests quickly, add extra delay
     if (requestCount > 3 && timeSinceLastRequest < 60000) {
         const waitTime = 5000; // 5 seconds between requests
-        console.log(`Rate limit prevention: waiting ${waitTime/1000}s...`);
+  
         await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
@@ -154,8 +153,7 @@ async function scrapeContacts(url, retryCount = 0) {
     const maxRetries = 3;
     
     try {
-        console.log(`\nScraping (attempt ${retryCount + 1}): ${url}`);
-        
+
         // Wait to prevent rate limiting
         await waitForRateLimit();
 
@@ -200,7 +198,7 @@ Return JSON only:
             // Handle rate limiting (429)
             if (scrapeResponse.status === 429 && retryCount < maxRetries) {
                 const waitTime = Math.pow(2, retryCount) * 10000; // 10s, 20s, 40s
-                console.log(`Rate limited. Waiting ${waitTime/1000}s before retry...`);
+               
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 return scrapeContacts(url, retryCount + 1);
             }
@@ -208,7 +206,7 @@ Return JSON only:
             // Retry on 529 (overloaded) or 500 errors
             if ((scrapeResponse.status === 529 || scrapeResponse.status >= 500) && retryCount < maxRetries) {
                 const waitTime = (retryCount + 1) * 3000;
-                console.log(`Server error. Retrying after ${waitTime/1000}s...`);
+               
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 return scrapeContacts(url, retryCount + 1);
             }
@@ -220,12 +218,12 @@ Return JSON only:
         
         // Log the full response for debugging (only if verbose)
         if (process.env.VERBOSE === 'true') {
-            console.log(`Response for ${url}:`, JSON.stringify(scrapeData, null, 2));
+         
         }
         
         // Check if content exists
         if (!scrapeData.content || scrapeData.content.length === 0) {
-            console.log('Warning: No content in API response');
+         
             throw new Error('No content in API response');
         }
 
@@ -235,19 +233,18 @@ Return JSON only:
             .join("\n");
 
         if (!scrapeText || scrapeText.trim().length === 0) {
-            console.log('Warning: Empty text content from API');
+           
             throw new Error('Empty response from API');
         }
         
-        console.log(`Extracted ${scrapeText.length} characters of text`);
+     
 
         let contactData;
         try {
             const cleanJson = scrapeText.replace(/```json\n?|\n?```/g, '').trim();
             contactData = JSON.parse(cleanJson);
         } catch (e) {
-            console.log("JSON parsing failed, using regex fallback");
-            
+         
             // Ensure scrapeText is a string
             const textToSearch = String(scrapeText || '');
             
@@ -268,7 +265,7 @@ Return JSON only:
                 has_contact_form: false
             };
             
-            console.log(`Regex extracted: ${emails.length} emails, ${phones.length} phones`);
+           
         }
 
         return {
@@ -285,7 +282,7 @@ Return JSON only:
         
         // Retry on network errors
         if (retryCount < maxRetries && (error.message.includes('fetch') || error.message.includes('network'))) {
-            console.log(`Retrying after ${(retryCount + 1) * 2} seconds...`);
+        
             await new Promise(resolve => setTimeout(resolve, (retryCount + 1) * 2000));
             return scrapeContacts(url, retryCount + 1);
         }

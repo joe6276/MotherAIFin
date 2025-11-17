@@ -48,11 +48,11 @@ async function copyWriting(question) {
         }
 
     } catch (error) {
-        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
+        
         
         // Fallback to Claude API
         try {
-            console.log("calling Claude..");
+       
             
 
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {

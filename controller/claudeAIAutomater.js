@@ -322,16 +322,5 @@ Remember: Your goal is to deliver exceptional, comprehensive solutions by intell
 }
 
 
-// async function run() {
-//     console.log("Running");
-    
-//     const response = await invokeClaudeTool('Build and SEO friendly website for Harambee Stars')
-    
-//     console.log(response);
-    
-// }
-
-// run()
-
 
 module.exports = { invokeClaudeTool }

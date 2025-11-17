@@ -66,8 +66,7 @@ async function transcribeFromUrl(audioUrl) {
       return res.status(400).json({ error: "Missing 'audioUrl' in request body" });
     }
 
-    console.log("🎧 Downloading audio from:", audioUrl);
-
+  
     // Download the audio file temporarily
     const response = await axios.get(audioUrl, { responseType: "arraybuffer" });
 
@@ -76,8 +75,7 @@ async function transcribeFromUrl(audioUrl) {
     const tempPath = path.join(os.tmpdir(), `audio_${Date.now()}${extension}`);
     fs.writeFileSync(tempPath, response.data);
 
-    console.log("📁 File downloaded to:", tempPath);
-
+  
     // Transcribe with OpenAI Whisper
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(tempPath),

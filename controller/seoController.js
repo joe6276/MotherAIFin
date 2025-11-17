@@ -22,8 +22,7 @@ class SEOAgent {
             this.scores = {};
             this.issues = [];
             this.recommendations = [];
-            console.log(`Analyzing SEO for: ${url}`);
-
+          
             // Fetch the webpage
             const response = await axios.get(url, {
                 headers: {
@@ -389,8 +388,7 @@ async function seoAgentFunc(seoResults, $) {
         }
 
     } catch (error) {
-        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-
+      
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -448,7 +446,7 @@ async function seoAgent(req, res) {
         return res.status(200).json(result);
 
     } catch (error) {
-        console.log(error);
+      
         return res.status(500).json({ error: error.message });
     }
 }
@@ -497,8 +495,7 @@ async function seoArticlesFunc(instruction) {
         }
 
     } catch (error) {
-        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-
+    
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -583,8 +580,7 @@ async function seoWebsiteFunc(instruction) {
         }
 
     } catch (error) {
-        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-
+       
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -669,8 +665,7 @@ async function seoUpdateWebsiteFunc(instruction, existingCode, url) {
         }
 
     } catch (error) {
-        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-
+      
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -722,7 +717,7 @@ async function seoArticles(req, res) {
         const result = await seoArticlesFunc(instruction);
         return res.status(200).json(result);
     } catch (error) {
-        console.log(error);
+      
         return res.status(500).json({ error: error.message });
     }
 }
@@ -738,7 +733,7 @@ async function seoWebsites(req, res) {
         const result = await seoWebsiteFunc(instruction);
         return res.status(200).json(result);
     } catch (error) {
-        console.log(error);
+      
         return res.status(500).json({ error: error.message });
     }
 }
@@ -756,7 +751,7 @@ async function updateSeoWebsites(req, res) {
         const result = await seoUpdateWebsiteFunc(instruction, existingCode, url);
         return res.status(200).json(result);
     } catch (error) {
-        console.log(error);
+      
         return res.status(500).json({ error: error.message });
     }
 }

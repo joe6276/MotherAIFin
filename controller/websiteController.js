@@ -131,8 +131,7 @@ async function generateComponentCode(componentType, instruction) {
       return parsed;
     } catch (e) {
       // If parsing fails, try to fix common issues
-      console.log('Initial parse failed, attempting fixes...');
-      
+    
       // Attempt to fix unescaped quotes (basic fix)
       let fixed = cleaned;
       
@@ -197,8 +196,7 @@ async function generateComponentCode(componentType, instruction) {
     }
 
   } catch (error) {
-    console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-    
+  
     // Fallback to Claude API
     try {
       const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -230,8 +228,7 @@ async function generateComponentCode(componentType, instruction) {
       }
 
       const messageContent = claudeData.content[0].text;
-      console.log("Claude raw response:", messageContent.substring(0, 200)); // Debug log
-      
+     
       const generatedCode = extractAndValidateJSON(messageContent);
 
       return {
@@ -242,8 +239,7 @@ async function generateComponentCode(componentType, instruction) {
     } catch (claudeError) {
       console.error("Claude API Error:", claudeError);
       
-      // Return fallback HTML/CSS
-      console.log("Both APIs failed, returning fallback component");
+     
       return {
         html: `<div class="component-error">
           <h3>Component Generation Error</h3>

@@ -22,7 +22,6 @@ async function generateAndUploadImage(prompt) {
   const fileName = `pollinations_${Date.now()}.png`;
   const imageUrl = await uploadToAzure(buffer, fileName);
 
-  console.log("✅ Uploaded image to:", imageUrl);
   return imageUrl;
 }
 
@@ -53,7 +52,7 @@ async function uploadAnImage(req,res){
         const image = await generateAndUploadImage(instruction)
         return res.status(200).json({url:image})
     } catch (error) {
-        console.log(error);
+ 
         
         return res.status(500).json(error)
     }

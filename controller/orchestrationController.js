@@ -60,8 +60,7 @@ async function chooseAgent(instruction) {
         }
 
     } catch (error) {
-        console.log("OpenAI failed or timed out, falling back to Claude:", error.message);
-
+      
         // Fallback to Claude API
         try {
             const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {

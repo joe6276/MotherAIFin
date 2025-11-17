@@ -93,7 +93,7 @@ async function updateStripeSessionId(stripeSessionId, email) {
 
     } catch (error) {
 
-
+  
         throw new Error(error.messsage)
     }
 }
@@ -149,6 +149,8 @@ async function addPayment(req, res) {
         const response = await stripePayment(samplePayment)
         return res.status(200).json(response)
     } catch (error) {
+   
+        
         return res.status(500).json(error.messsage)
     }
 }
