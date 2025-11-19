@@ -207,7 +207,6 @@ async function run() {
 }
 
 
-run()
 module.exports={
     createFileinDateFolder,
     uploadFileToDrive
