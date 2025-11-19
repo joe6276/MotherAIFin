@@ -125,6 +125,36 @@ async function updatePaymentIntent(stripeSessionId, paymentIntentId) {
 }
 
 
+async function checkSubscriptionActive(userId) {
+    try {
+        const pool = await sql.connect(sqlConfig);
+
+        const result = await pool.request()
+            .input('UserId', sql.NVarChar, userId)
+            .query(`
+                SELECT ExpiryDate 
+                FROM Subscriptions
+                WHERE UserId = @UserId
+            `);
+
+        // No subscription found
+        if (result.recordset.length === 0) {
+            return false;
+        }
+
+        const expiryDate = result.recordset[0].ExpiryDate;
+
+        // Compare expiry date with current time
+        const now = new Date();
+
+        return expiryDate > now;     // true = active, false = expired
+
+    } catch (error) {
+        throw new Error(error.message);
+    }
+}
+
+
 
 
 
@@ -199,6 +229,14 @@ async function checkSubscription(userId) {
 
 
 
+async function checkSub(req,res) {
+    try {
+        const {userId}= req.body
+        const response= await checkSubscription(userId)
+        return res.status(200).json({response})
+    } catch (error) {
+       return  res.status(500).json(error)
+    }
+}
 
-
-module.exports = { addPayment, validateStripePayment, checkSubscription }
+module.exports = { addPayment, validateStripePayment, checkSubscription, checkSub }

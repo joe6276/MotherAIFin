@@ -4,6 +4,8 @@ const dotenv = require("dotenv")
 const mssql = require("mssql")
 const { sqlConfig } = require("../config")
 const fs= require("fs")
+const { uploadFileToDrive } = require(".")
+
 dotenv.config({ path: path.resolve(__dirname, "../.env") })
 
 
@@ -286,5 +288,33 @@ console.error('Error uploading file:', error);
     }
 }
 
-module.exports = { getURL, getCallback, getFiles, uploadFile}
+
+async function uploadaSingleFile(req,res){
+    try {
+        const folderName = req.body.folderName
+         if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const thepath = req.file.path
+    const thename= req.file.originalname
+    const result = await uploadFileToDrive(folderName,thepath,thename)
+    console.log(result);
+
+       res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      file: result
+    });
+    
+    await uploadFile()
+    } catch (error) {
+ console.error('Upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+    }
+}
+
+module.exports = { getURL, getCallback, getFiles, uploadFile, uploadaSingleFile}
 

@@ -1,104 +1,394 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Upload File to Drive</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f6fa;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload to Google Drive</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    .upload-container {
-      background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      width: 350px;
-      text-align: center;
-    }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-    h2 {
-      color: #2f3640;
-      margin-bottom: 20px;
-    }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
 
-    input[type="file"] {
-      margin-bottom: 15px;
-    }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
 
-    button {
-      background-color: #0984e3;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: 0.3s;
-    }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
 
-    button:hover {
-      background-color: #74b9ff;
-    }
+        .form-group {
+            margin-bottom: 20px;
+        }
 
-    .message {
-      margin-top: 15px;
-      font-size: 14px;
-    }
-  </style>
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+
+        .file-input-label:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .file-input-label.has-file {
+            border-color: #4caf50;
+            background: #f1f8f4;
+        }
+
+        .file-info {
+            text-align: center;
+        }
+
+        .file-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .file-text {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #4caf50;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:active {
+            transform: translateY(0);
+        }
+
+        .upload-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .result-link {
+            color: #667eea;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .result-link:hover {
+            text-decoration: underline;
+        }
+
+        small {
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>📁 Upload to Google Drive</h1>
+        <p class="subtitle">Select a file and upload it to your Drive</p>
 
-  <div class="upload-container">
-    <h2>Upload File</h2>
-    <input type="file" id="fileInput" />
-    <br />
-    <button id="uploadBtn">Upload</button>
-    <div class="message" id="message"></div>
-  </div>
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="apiUrl">API URL *</label>
+                <input 
+                    type="text" 
+                    id="apiUrl" 
+                    placeholder="http://localhost:3000/upload" 
+                    required
+                >
+                <small>Enter your backend API endpoint</small>
+            </div>
 
-  <script>
-    const uploadBtn = document.getElementById('uploadBtn');
-    const fileInput = document.getElementById('fileInput');
-    const message = document.getElementById('message');
+            <div class="form-group">
+                <label for="folderId">Folder ID (Optional)</label>
+                <input 
+                    type="text" 
+                    id="folderId" 
+                    placeholder="Leave empty for root folder"
+                >
+                <small>Google Drive folder ID where file will be uploaded</small>
+            </div>
 
-    uploadBtn.addEventListener('click', async () => {
-      const file = fileInput.files[0];
-      if (!file) {
-        message.innerHTML = "⚠️ Please select a file first.";
-        return;
-      }
+            <div class="form-group">
+                <label>Select File *</label>
+                <div class="file-input-wrapper">
+                    <input 
+                        type="file" 
+                        id="fileInput" 
+                        accept="image/*,.pdf"
+                        required
+                    >
+                    <label for="fileInput" class="file-input-label" id="fileLabel">
+                        <div class="file-info">
+                            <div class="file-icon">📎</div>
+                            <div class="file-text">Click to select a file</div>
+                            <div class="file-name" id="fileName"></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folderId", "1KLWXj89GLwV0kJwkr9_tuwrfDrNgH-A0");
+            <button type="submit" class="upload-btn" id="uploadBtn">
+                Upload to Drive
+            </button>
+        </form>
 
-      message.innerHTML = "⏳ Uploading...";
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Uploading...</div>
+        </div>
 
-      try {
-        const response = await fetch("https://12e33947ade1.ngrok-free.app/auth/add", {
-          method: "POST",
-          body: formData
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileLabel = document.getElementById('fileLabel');
+        const fileName = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const result = document.getElementById('result');
+        const apiUrlInput = document.getElementById('apiUrl');
+        const folderIdInput = document.getElementById('folderId');
+
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                fileName.textContent = file.name;
+                fileLabel.classList.add('has-file');
+            } else {
+                fileName.textContent = '';
+                fileLabel.classList.remove('has-file');
+            }
         });
 
-        const result = await response.json();
+        // Handle form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const file = fileInput.files[0];
+            const apiUrl = apiUrlInput.value.trim();
+            const folderId = folderIdInput.value.trim();
 
-        if (response.ok && result.success) {
-          message.innerHTML = `✅ File uploaded successfully: <b>${result.file.name}</b>`;
-        } else {
-          message.innerHTML = `❌ Upload failed: ${result.error || "Unknown error"}`;
+            if (!file) {
+                showResult('error', 'Please select a file to upload');
+                return;
+            }
+
+            if (!apiUrl) {
+                showResult('error', 'Please enter an API URL');
+                return;
+            }
+
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('file', file);
+            if (folderId) {
+                formData.append('folderId', folderId);
+            }
+
+            // Show progress
+            uploadBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            result.style.display = 'none';
+            progressFill.style.width = '30%';
+            progressText.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                progressFill.style.width = '70%';
+
+                const data = await response.json();
+
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Upload complete!';
+
+                if (data.success) {
+                    showResult('success', 'File uploaded successfully!', data.file);
+                    uploadForm.reset();
+                    fileName.textContent = '';
+                    fileLabel.classList.remove('has-file');
+                } else {
+                    showResult('error', data.error || 'Upload failed');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                showResult('error', `Upload failed: ${error.message}`);
+            } finally {
+                uploadBtn.disabled = false;
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 2000);
+            }
+        });
+
+        // Show result message
+        function showResult(type, message, fileData = null) {
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+
+            let html = `<div class="result-title">${message}</div>`;
+            
+            if (fileData) {
+                html += `
+                    <div style="margin-top: 10px;">
+                        <strong>File Name:</strong> ${fileData.name}<br>
+                        <strong>File ID:</strong> ${fileData.id}<br>
+                        ${fileData.webViewLink ? `<strong>View:</strong> <a href="${fileData.webViewLink}" target="_blank" class="result-link">Open in Drive</a>` : ''}
+                    </div>
+                `;
+            }
+
+            result.innerHTML = html;
         }
-      } catch (error) {
-        console.error(error);
-        message.innerHTML = "🚫 Error connecting to the server.";
-      }
-    });
-  </script>
-
+    </script>
 </body>
 </html>

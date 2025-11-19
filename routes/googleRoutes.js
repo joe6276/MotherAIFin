@@ -1,5 +1,5 @@
 const {Router}= require("express")
-const { getURL,getCallback, getFiles, uploadFile } = require("../google/googleAuth")
+const { getURL,getCallback, getFiles, uploadFile, uploadaSingleFile } = require("../google/googleAuth")
 const multer = require("multer")
 
 const upload = multer({ 
@@ -18,4 +18,5 @@ googleRouter.get("/google", getURL)
 googleRouter.get("/google/callback", getCallback)
 googleRouter.post("/api/files", getFiles)
 googleRouter.post("/add", upload.single('file') , uploadFile)
+googleRouter.post("/upload", upload.single('file'), uploadaSingleFile)
 module.exports={googleRouter}
