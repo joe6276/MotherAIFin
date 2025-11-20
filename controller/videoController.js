@@ -1,42 +1,72 @@
-const { generateMultiSegmentAdvert } = require("../videoTools");
-const { checkSubscription } = require("./paymentController");
+const { generateScript, generateImage, generateVideo, generateSingleScript } = require("./video");
 
 
-async function generateVideo(req, res) {
+async function genVideo(req, res) {
     try {
 
         const { instruction, userId } = req.body;
+        const scenes = await generateScript(instruction)
+        const finalMovieUrls = [];
+        const images = [];
 
-        var checkSub = await checkSubscription(userId)
-        if (!checkSub) {
-            return res.status(400).json({ error: "Kindly Check your Subscription" });
-        } if (!checkSubscription(userId)) {
-            return res.status(400).json({ error: "Kindly Check your Subscription" });
+        for (let i = 0; i < scenes.length; i++) {
+            const scene = scenes[i]
+            const imgURL = await generateImage(scene)
+            console.log(imgURL);
+
+            const vidURL = await generateVideo(scene, imgURL)
+
+            console.log(vidURL);
+
+            images.push(imgURL)
+            finalMovieUrls.push(vidURL)
         }
 
-        const res = await generateMultiSegmentAdvert(instruction)
-        return res.status(200).json(res)
+        console.log(finalMovieUrls);
+        console.log(images);
+
+        const safeImages = images.map(i => i.toString());
+        const safeVideos = finalMovieUrls.map(v => v.toString());
+        const safeScenes = scenes.map(s => s.toString());
+
+        return res.status(200).json({ images: safeImages, videos: safeVideos, scenes: safeScenes });
+
+    } catch (error) {
+        return res.status(500).json(error)
+    }
+}
+
+async function getScenes(req,res) {
+    try {
+        const { instruction, userId } = req.body;
+        const scenes = await generateScript(instruction)
+        return res.status(200).json({scenes})
+    } catch (error) {
+        return res.status(500).json(error)
+    }
+}
+
+async function genSingleVideo(req, res) {
+    try {
+
+        const { instruction, userId } = req.body;
+        const scenes = await generateSingleScript(instruction)
+        const finalMovieUrls = [];
+        const images = [];
+
+        const imgURL = await generateImage(scenes[0])
+        const vidURL = await generateVideo(scenes[0], imgURL)
+
+
+        images.push(imgURL)
+        finalMovieUrls.push(vidURL)
+
+        return res.status(200).json({ images, videos: finalMovieUrls, scenes })
+
     } catch (error) {
         return res.status(500).json(error)
     }
 }
 
 
-
-
-async function run() {
-
-    try {
-        const response = await generateMultiSegmentAdvert("create for an AI Marketting Video for my company called JoeAI")
-        console.log(response);
-
-    } catch (error) {
-        console.log(error);
-
-    }
-
-}
-
-// run()
-
-module.exports = { generateVideo }
+module.exports = { genVideo, genSingleVideo, getScenes }

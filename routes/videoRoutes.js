@@ -1,10 +1,12 @@
 const {Router}= require("express")
-const { generateVideo } = require("../controller/videoController")
+const {  genVideo, genSingleVideo, getScenes } = require("../controller/videoController")
 
 const videoRouter = Router()
 
 
-videoRouter.post("/", generateVideo)
+videoRouter.post("/", genSingleVideo)
+videoRouter.post("/scenes", getScenes )
+videoRouter.post("/all", genVideo)
 
 
 module.exports={videoRouter}

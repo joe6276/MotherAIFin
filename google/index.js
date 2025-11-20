@@ -26,6 +26,26 @@ const drive = google.drive({
 
 async function getFolderId(folderName) {
     try {
+           const CLIENT_ID =process.env.CLIENT4
+const CLIENT_SECRET = process.env.SECRET4
+const REDIRECT_URL = process.env.REDIRECT_URL4
+const REFRESH_TOKEN = process.env.REFRESH_TOKEN
+
+console.log(CLIENT_SECRET,CLIENT_ID,REDIRECT_URL,REFRESH_TOKEN);
+
+const oauthclient = new google.auth.OAuth2(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    REDIRECT_URL
+)
+
+oauthclient.setCredentials({ refresh_token: REFRESH_TOKEN })
+
+
+const drive = google.drive({
+    version: 'v3',
+    auth: oauthclient
+})
         const response = await drive.files.list({
             q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder'`,
             fields: 'files(id,name)'
@@ -206,6 +226,7 @@ async function run() {
     }
 }
 
+// run()
 
 module.exports={
     createFileinDateFolder,
