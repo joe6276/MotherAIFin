@@ -77,17 +77,13 @@ async function addAudio(req, res) {
     try {
         await downloadVideo(videoUrl, `input${userId}.mp4`)
         await textToSpeech(text, `generated_audio${userId}.mp3`)
-
-
-
         const audioDuration = 6
         const options = {}
         const srtPath = `subtitles${userId}.srt`
         const finalPath = `final_with_subtitles${userId}.mp4`;
         generateSrtFile(text, srtPath, audioDuration, options.wordsPerSubtitle || 8)
 
-        await mergeAudioWithVideo(`input${userId}.mp4`, `generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`)
-
+        await mergeAudioWithVideo(`input${userId}.mp4`, `generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`)      
         await addSubtitlesToVideo(`output_with_audio${userId}.mp4`, srtPath, finalPath, options.subtitleStyle)
 
         const outputPath = path.join(__dirname, `../${finalPath}`);
