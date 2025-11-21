@@ -1,7 +1,7 @@
-const { downloadVideo, textToSpeech, mergeAudioWithVideo, deleteFiles, uploadVideoFileUnique} = require("./merger");
+const { downloadVideo, textToSpeech, mergeAudioWithVideo, deleteFiles, uploadVideoFileUnique, generateSrtFile, addSubtitlesToVideo } = require("./merger");
 const { generateScript, generateImage, generateVideo, generateSingleScript } = require("./video");
-const path= require("path")
-const fs= require('fs')
+const path = require("path")
+const fs = require('fs')
 async function genVideo(req, res) {
     try {
 
@@ -77,17 +77,29 @@ async function addAudio(req, res) {
     try {
         await downloadVideo(videoUrl, `input${userId}.mp4`)
         await textToSpeech(text, `generated_audio${userId}.mp3`)
-        await mergeAudioWithVideo(`input${userId}.mp4`, `generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`)
-        const outputPath = path.join(__dirname, `../output_with_audio${userId}.mp4`);
-        const buffer = fs.readFileSync(outputPath);
-        const url = await uploadVideoFileUnique(buffer, `output_with_audio${userId}.mp4`);
 
-        deleteFiles(`input${userId}.mp4`,`generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`)
+
+
+        const audioDuration = 6
+        const options = {}
+        const srtPath = `subtitles${userId}.srt`
+        const finalPath = `final_with_subtitles${userId}.mp4`;
+        generateSrtFile(text, srtPath, audioDuration, options.wordsPerSubtitle || 8)
+
+        await mergeAudioWithVideo(`input${userId}.mp4`, `generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`)
+
+        await addSubtitlesToVideo(`output_with_audio${userId}.mp4`, srtPath, finalPath, options.subtitleStyle)
+
+        const outputPath = path.join(__dirname, `../${finalPath}`);
+        const buffer = fs.readFileSync(outputPath);
+        const url = await uploadVideoFileUnique(buffer, finalPath);
+
+        deleteFiles(`input${userId}.mp4`, `generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`, finalPath, srtPath)
         return res.status(200).json({ url })
 
     } catch (error) {
         console.log(error);
-        
+
         return res.status(500).json({ error })
     }
 

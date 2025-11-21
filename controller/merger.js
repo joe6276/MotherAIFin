@@ -110,21 +110,88 @@ async function uploadVideoFileUnique(fileBuffer, originalName) {
 }
 
 
-async function run() {
-    try {
-        const userId = 20;
-        const outputPath = path.join(__dirname, `../output_with_audio${userId}.mp4`);
-        const buffer = fs.readFileSync(outputPath);
-        const url = await uploadVideoFileUnique(buffer, `output_with_audio${userId}.mp4`);
-        console.log(url);
+function getAudioDuration(audioPath) {
+    return new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(audioPath, (err, metadata) => {
+            if (err) reject(err);
+            else resolve(metadata.format.duration);
+        });
+    });
+}
 
-    } catch (error) {
-        console.log(error);
+function formatSrtTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const millis = Math.floor((seconds % 1) * 1000);
+    
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(millis).padStart(3, "0")}`;
+}
 
+function generateSrtFile(text, srtPath, audioDuration, wordsPerSubtitle = 8) {
+    const words = text.split(" ");
+    const subtitles = [];
+    
+    const totalWords = words.length;
+    const timePerWord = audioDuration / totalWords;
+    
+    for (let i = 0; i < words.length; i += wordsPerSubtitle) {
+        const chunk = words.slice(i, i + wordsPerSubtitle).join(" ");
+        const startTime = i * timePerWord;
+        const endTime = Math.min((i + wordsPerSubtitle) * timePerWord, audioDuration);
+        
+        subtitles.push({
+            index: subtitles.length + 1,
+            start: formatSrtTime(startTime),
+            end: formatSrtTime(endTime),
+            text: chunk
+        });
     }
+    
+    const srtContent = subtitles
+        .map(sub => `${sub.index}\n${sub.start} --> ${sub.end}\n${sub.text}\n`)
+        .join("\n");
+    
+    fs.writeFileSync(srtPath, srtContent, "utf8");
+    console.log("SRT file generated:", srtPath);
+}
+
+function addSubtitlesToVideo(videoPath, srtPath, outputPath, subtitleStyle = {}) {
+    const defaultStyle = {
+        FontName: 'Arial',
+        FontSize: 24,
+        PrimaryColour: '&HFFFFFF&',
+        OutlineColour: '&H000000&',
+        Outline: 2,
+        Bold: 1,
+        Alignment: 2
+    };
+    
+    const style = { ...defaultStyle, ...subtitleStyle };
+    const styleString = Object.entries(style)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(',');
+    
+    return new Promise((resolve, reject) => {
+        ffmpeg()
+            .input(videoPath)
+            .outputOptions([
+                "-vf", `subtitles=${srtPath.replace(/\\/g, "/")}:force_style='${styleString}'`,
+                "-c:a copy"
+            ])
+            .save(outputPath)
+            .on("end", () => {
+                console.log("Subtitles added to video!");
+                resolve();
+            })
+            .on("error", reject);
+    });
 }
 
 
-// run()
 
-module.exports = { downloadVideo, textToSpeech, mergeAudioWithVideo, uploadVideoFileUnique, deleteFiles }
+
+
+
+
+module.exports = { downloadVideo, textToSpeech, mergeAudioWithVideo, uploadVideoFileUnique, deleteFiles, generateSrtFile, addSubtitlesToVideo }
