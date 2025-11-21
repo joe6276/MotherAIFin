@@ -1,6 +1,7 @@
+const { downloadVideo, textToSpeech, mergeAudioWithVideo, deleteFiles, uploadVideoFileUnique} = require("./merger");
 const { generateScript, generateImage, generateVideo, generateSingleScript } = require("./video");
-
-
+const path= require("path")
+const fs= require('fs')
 async function genVideo(req, res) {
     try {
 
@@ -36,11 +37,11 @@ async function genVideo(req, res) {
     }
 }
 
-async function getScenes(req,res) {
+async function getScenes(req, res) {
     try {
         const { instruction, userId } = req.body;
         const scenes = await generateScript(instruction)
-        return res.status(200).json({scenes})
+        return res.status(200).json({ scenes })
     } catch (error) {
         return res.status(500).json(error)
     }
@@ -69,4 +70,28 @@ async function genSingleVideo(req, res) {
 }
 
 
-module.exports = { genVideo, genSingleVideo, getScenes }
+async function addAudio(req, res) {
+
+    const { text, userId, videoUrl } = req.body
+
+    try {
+        await downloadVideo(videoUrl, `input${userId}.mp4`)
+        await textToSpeech(text, `generated_audio${userId}.mp3`)
+        await mergeAudioWithVideo(`input${userId}.mp4`, `generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`)
+        const outputPath = path.join(__dirname, `../output_with_audio${userId}.mp4`);
+        const buffer = fs.readFileSync(outputPath);
+        const url = await uploadVideoFileUnique(buffer, `output_with_audio${userId}.mp4`);
+
+        deleteFiles(`input${userId}.mp4`,`generated_audio${userId}.mp3`, `output_with_audio${userId}.mp4`)
+        return res.status(200).json({ url })
+
+    } catch (error) {
+        console.log(error);
+        
+        return res.status(500).json({ error })
+    }
+
+}
+
+
+module.exports = { genVideo, genSingleVideo, getScenes, addAudio }
