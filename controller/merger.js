@@ -161,22 +161,68 @@ function generateSrtFile(text, srtPath, audioDuration, wordsPerSubtitle = 8) {
     }
 }
 
+
 function addSubtitlesToVideo(videoPath, srtPath, outputPath, subtitleStyle = {}) {
     const defaultStyle = {
         FontSize: 28,
-        PrimaryColour: '&H00FFFFFF', // White (format: &H00BBGGRR)
-        OutlineColour: '&H00000000', // Black outline
-        BackColour: '&H80000000',    // Semi-transparent black background
+        PrimaryColour: '&H00FFFFFF',
+        OutlineColour: '&H00000000',
+        BackColour: '&H80000000',
         Outline: 3,
         Shadow: 2,
         Bold: -1,
-        Alignment: 2,  // Bottom center
-        MarginV: 40    // 40 pixels from bottom
+        Alignment: 2,
+        MarginV: 40
     };
     
     const style = { ...defaultStyle, ...subtitleStyle };
     
-    // Escape ampersands in color values for shell
+    // Detect if running on Azure
+    const isAzure = process.env.WEBSITE_INSTANCE_ID !== undefined;
+    
+    // Set FFmpeg path for Azure
+    if (isAzure) {
+        const ffmpegPath = path.join(process.cwd(), 'bin', 'ffmpeg.exe');
+        const ffprobePath = path.join(process.cwd(), 'bin', 'ffprobe.exe');
+        
+        if (fs.existsSync(ffmpegPath)) {
+            ffmpeg.setFfmpegPath(ffmpegPath);
+            console.log('Using FFmpeg from:', ffmpegPath);
+        } else {
+            console.error('FFmpeg not found at:', ffmpegPath);
+            return Promise.reject(new Error('FFmpeg binary not found in deployment'));
+        }
+        
+        if (fs.existsSync(ffprobePath)) {
+            ffmpeg.setFfprobePath(ffprobePath);
+        }
+    }
+    
+    // Get absolute paths
+    const absoluteSrtPath = path.resolve(srtPath);
+    const absoluteVideoPath = path.resolve(videoPath);
+    const absoluteOutputPath = path.resolve(outputPath);
+    
+    // Verify inputs exist
+    if (!fs.existsSync(absoluteVideoPath)) {
+        return Promise.reject(new Error(`Video file not found: ${absoluteVideoPath}`));
+    }
+    
+    if (!fs.existsSync(absoluteSrtPath)) {
+        return Promise.reject(new Error(`SRT file not found: ${absoluteSrtPath}`));
+    }
+    
+    // Prepare FFmpeg path (always use forward slashes for FFmpeg)
+    let ffmpegSrtPath = absoluteSrtPath.replace(/\\/g, '/');
+    
+    // Escape special characters for FFmpeg filter
+    ffmpegSrtPath = ffmpegSrtPath
+        .replace(/:/g, '\\:')
+        .replace(/\[/g, '\\[')
+        .replace(/\]/g, '\\]')
+        .replace(/'/g, "\\'");
+    
+    // Build style string
     const styleString = Object.entries(style)
         .map(([key, value]) => {
             const stringValue = String(value).replace(/&/g, '\\&');
@@ -184,99 +230,98 @@ function addSubtitlesToVideo(videoPath, srtPath, outputPath, subtitleStyle = {})
         })
         .join(',');
     
-    // Get absolute path
-    const absoluteSrtPath = path.resolve(srtPath);
+    // Build subtitle filter
+    const subtitleFilter = `subtitles='${ffmpegSrtPath}':force_style='${styleString}'`;
     
-    // Prepare path for FFmpeg based on OS
-    let ffmpegPath;
-    if (process.platform === 'win32') {
-        // Windows: Convert backslashes to forward slashes and escape special chars
-        ffmpegPath = absoluteSrtPath
-            .replace(/\\/g, '/')
-            .replace(/:/g, '\\\\:')
-            .replace(/\[/g, '\\\\[')
-            .replace(/\]/g, '\\\\]');
-    } else {
-        // Linux/Mac: Escape special chars
-        ffmpegPath = absoluteSrtPath
-            .replace(/:/g, '\\:')
-            .replace(/\[/g, '\\[')
-            .replace(/\]/g, '\\]');
+    console.log('=== FFmpeg Processing Details ===');
+    console.log('Environment:', isAzure ? 'Azure App Service' : 'Local');
+    console.log('Video path:', absoluteVideoPath);
+    console.log('SRT path:', absoluteSrtPath);
+    console.log('Output path:', absoluteOutputPath);
+    console.log('FFmpeg SRT path:', ffmpegSrtPath);
+    console.log('Subtitle filter:', subtitleFilter);
+    
+    // Read SRT for debugging
+    try {
+        const srtContent = fs.readFileSync(absoluteSrtPath, 'utf8');
+        console.log('SRT preview:', srtContent.substring(0, 200));
+    } catch (err) {
+        console.error('Could not read SRT file:', err.message);
     }
-    
-    console.log("Original SRT path:", absoluteSrtPath);
-    console.log("FFmpeg SRT path:", ffmpegPath);
-    console.log("Subtitle style:", styleString);
-    
-    // Verify SRT exists
-    if (!fs.existsSync(absoluteSrtPath)) {
-        console.error("ERROR: SRT file not found!");
-        return Promise.reject(new Error(`SRT file not found: ${absoluteSrtPath}`));
-    }
-    
-    // Read and log SRT content for debugging
-    const srtContent = fs.readFileSync(absoluteSrtPath, 'utf8');
-    console.log("SRT content (first 200 chars):", srtContent.substring(0, 200));
-    
-    // Build the subtitle filter string
-    const subtitleFilter = `subtitles=${ffmpegPath}:force_style='${styleString}'`;
-    
-    console.log("Subtitle filter:", subtitleFilter);
     
     return new Promise((resolve, reject) => {
-        ffmpeg()
-            .input(videoPath)
+        const startTime = Date.now();
+        
+        const command = ffmpeg()
+            .input(absoluteVideoPath)
             .outputOptions([
                 '-vf', subtitleFilter,
                 '-c:v', 'libx264',
                 '-c:a', 'copy',
-                '-preset', 'fast',
+                '-preset', 'ultrafast', // Faster for Azure timeouts
                 '-crf', '23'
             ])
-            .save(outputPath)
-            .on("start", (commandLine) => {
-                console.log("FFmpeg command:", commandLine);
+            .output(absoluteOutputPath);
+        
+        command
+            .on('start', (commandLine) => {
+                console.log('FFmpeg command:', commandLine);
             })
-            .on("progress", (progress) => {
+            .on('progress', (progress) => {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
                 if (progress.percent) {
-                    console.log(`Processing: ${Math.floor(progress.percent)}% done`);
+                    console.log(`Progress: ${Math.floor(progress.percent)}% | Time: ${elapsed}s`);
+                }
+                
+                // Azure timeout warning
+                if (isAzure && elapsed > 200) {
+                    console.warn('WARNING: Approaching Azure timeout limit (230s)');
                 }
             })
-            .on("end", () => {
-                console.log("Subtitles added to video!");
+            .on('end', () => {
+                const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`Processing completed in ${totalTime}s`);
                 
-                // Verify output file exists and has content
-                if (fs.existsSync(outputPath)) {
-                    const stats = fs.statSync(outputPath);
-                    console.log(`Output video size: ${stats.size} bytes`);
-                    
-                    const inputStats = fs.statSync(videoPath);
-                    console.log(`Input video size: ${inputStats.size} bytes`);
+                // Verify output
+                if (fs.existsSync(absoluteOutputPath)) {
+                    const stats = fs.statSync(absoluteOutputPath);
+                    const inputStats = fs.statSync(absoluteVideoPath);
+                    console.log(`Input: ${(inputStats.size / 1024 / 1024).toFixed(2)} MB`);
+                    console.log(`Output: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+                    resolve(absoluteOutputPath);
                 } else {
-                    console.error("WARNING: Output video was not created!");
+                    reject(new Error('Output video was not created'));
                 }
-                
-                resolve();
             })
-            .on("error", (err, stdout, stderr) => {
-                console.error("FFmpeg error:", err.message);
+            .on('error', (err, stdout, stderr) => {
+                console.error('=== FFmpeg Error ===');
+                console.error('Error message:', err.message);
+                
                 if (stderr) {
                     const stderrStr = String(stderr);
-                    console.error("FFmpeg stderr:", stderrStr);
+                    console.error('FFmpeg stderr:', stderrStr);
                     
-                    // Look for specific errors
-                    if (stderrStr.includes("No such file")) {
-                        console.error("File access error - check file paths");
+                    // Specific error hints
+                    if (stderrStr.includes('No such file')) {
+                        console.error('HINT: File path issue - check file exists and path escaping');
                     }
-                    if (stderrStr.includes("Invalid argument")) {
-                        console.error("Filter syntax error - check escaping");
+                    if (stderrStr.includes('Invalid argument')) {
+                        console.error('HINT: Filter syntax error - check character escaping');
+                    }
+                    if (stderrStr.includes('libx264') || stderrStr.includes('codec')) {
+                        console.error('HINT: Codec issue - FFmpeg may be missing codecs');
+                    }
+                    if (stderrStr.includes('fontconfig')) {
+                        console.error('HINT: Font issue - may need font files in Azure');
                     }
                 }
+                
                 reject(err);
             });
+        
+        command.run();
     });
 }
-
 
 
 
