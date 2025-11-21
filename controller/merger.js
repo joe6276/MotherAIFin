@@ -110,15 +110,7 @@ async function uploadVideoFileUnique(fileBuffer, originalName) {
 }
 
 
-function getAudioDuration(audioPath) {
-    return new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(audioPath, (err, metadata) => {
-            if (err) reject(err);
-            else resolve(metadata.format.duration);
-        });
-    });
-}
-
+// Format time for SRT subtitle format (HH:MM:SS,mmm)
 function formatSrtTime(seconds) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -128,12 +120,15 @@ function formatSrtTime(seconds) {
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(millis).padStart(3, "0")}`;
 }
 
+// Generate SRT subtitle file from text
 function generateSrtFile(text, srtPath, audioDuration, wordsPerSubtitle = 8) {
-    const words = text.split(" ");
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
     const subtitles = [];
     
     const totalWords = words.length;
     const timePerWord = audioDuration / totalWords;
+    
+    console.log(`Generating SRT: ${totalWords} words, ${audioDuration}s duration, ${timePerWord.toFixed(3)}s per word`);
     
     for (let i = 0; i < words.length; i += wordsPerSubtitle) {
         const chunk = words.slice(i, i + wordsPerSubtitle).join(" ");
@@ -154,8 +149,18 @@ function generateSrtFile(text, srtPath, audioDuration, wordsPerSubtitle = 8) {
     
     fs.writeFileSync(srtPath, srtContent, "utf8");
     console.log("SRT file generated:", srtPath);
+    console.log("SRT content preview:\n", srtContent.substring(0, 200));
+    
+    // Verify file was written
+    if (fs.existsSync(srtPath)) {
+        const stats = fs.statSync(srtPath);
+        console.log(`SRT file size: ${stats.size} bytes`);
+    } else {
+        console.error("WARNING: SRT file was not created!");
+    }
 }
 
+// Burn subtitles into video
 function addSubtitlesToVideo(videoPath, srtPath, outputPath, subtitleStyle = {}) {
     const defaultStyle = {
         FontName: 'Arial',
@@ -172,25 +177,42 @@ function addSubtitlesToVideo(videoPath, srtPath, outputPath, subtitleStyle = {})
         .map(([key, value]) => `${key}=${value}`)
         .join(',');
     
+    // Escape the path properly for FFmpeg's subtitle filter
+    // On Windows: replace backslashes with forward slashes and escape special chars
+    const absoluteSrtPath = path.resolve(srtPath);
+    let escapedPath = absoluteSrtPath.replace(/\\/g, '/');
+    
+    // Escape colons (after drive letter on Windows), single quotes, and brackets
+    escapedPath = escapedPath.replace(/:/g, '\\:')
+                             .replace(/'/g, "\\'")
+                             .replace(/\[/g, '\\[')
+                             .replace(/\]/g, '\\]');
+    
+    console.log("Original SRT path:", absoluteSrtPath);
+    console.log("Escaped SRT path:", escapedPath);
+    
     return new Promise((resolve, reject) => {
         ffmpeg()
             .input(videoPath)
             .outputOptions([
-                "-vf", `subtitles=${srtPath.replace(/\\/g, "/")}:force_style='${styleString}'`,
-                "-c:a copy"
+                '-vf', `subtitles='${escapedPath}':force_style='${styleString}'`,
+                '-c:a', 'copy'
             ])
             .save(outputPath)
+            .on("start", (commandLine) => {
+                console.log("FFmpeg command:", commandLine);
+            })
             .on("end", () => {
                 console.log("Subtitles added to video!");
                 resolve();
             })
-            .on("error", reject);
+            .on("error", (err, stdout, stderr) => {
+                console.error("FFmpeg error:", err.message);
+                console.error("FFmpeg stderr:", stderr);
+                reject(err);
+            });
     });
 }
-
-
-
-
 
 
 
