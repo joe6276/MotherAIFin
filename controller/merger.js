@@ -164,18 +164,18 @@ function generateSrtFile(text, srtPath, audioDuration, wordsPerSubtitle = 8) {
 
 // Burn subtitles into video
 function addSubtitlesToVideo(videoPath, srtPath, outputPath, subtitleStyle = {}) {
-    const defaultStyle = {
-        FontName: 'Arial',
-        FontSize: 28,
-        PrimaryColour: '&H00FFFFFF', // White (format: &H00BBGGRR)
-        OutlineColour: '&H00000000', // Black outline
-        BackColour: '&H80000000',    // Semi-transparent black background
-        Outline: 3,
-        Shadow: 2,
-        Bold: -1,
-        Alignment: 2,  // Bottom center
-        MarginV: 20    // 20 pixels from bottom
-    };
+const defaultStyle = {
+    FontName: 'DejaVuSans',
+    FontSize: 28,
+    PrimaryColour: '&H00FFFFFF',
+    OutlineColour: '&H00000000',
+    BackColour: '&H80000000',
+    Outline: 3,
+    Shadow: 2,
+    Bold: -1,
+    Alignment: 2,
+    MarginV: 20
+};
     
     const style = { ...defaultStyle, ...subtitleStyle };
     const styleString = Object.entries(style)
