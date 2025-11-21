@@ -165,7 +165,7 @@ function generateSrtFile(text, srtPath, audioDuration, wordsPerSubtitle = 8) {
 // Burn subtitles into video
 function addSubtitlesToVideo(videoPath, srtPath, outputPath, subtitleStyle = {}) {
 const defaultStyle = {
-    FontName: 'DejaVuSans',
+    FontName: 'Roboto-Regular',
     FontSize: 28,
     PrimaryColour: '&H00FFFFFF',
     OutlineColour: '&H00000000',
