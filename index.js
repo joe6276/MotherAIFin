@@ -17,6 +17,7 @@ const { automationRouter } = require("./routes/automationRouter")
 const { googleRouter } = require("./routes/googleRoutes")
 const { paymentRouter } = require("./routes/paymentRouter")
 const { scrapperRouter } = require("./routes/scrapperRoutes")
+const { deepFakeRouter } = require("./routes/deepFake")
 dotenv.config()
 
 
@@ -47,6 +48,8 @@ app.use("/automation", automationRouter)
 app.use("/auth", googleRouter)
 app.use("/payment", paymentRouter)
 app.use("/scrap", scrapperRouter)
+app.use("/df", deepFakeRouter)
+
 
 app.get("/test", (req,res)=>{
     res.status(200).send("<h1> Hello  Here!!!! </h1>")
